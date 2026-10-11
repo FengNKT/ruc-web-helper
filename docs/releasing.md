@@ -118,7 +118,7 @@ npm run version:check
 npm test
 npm run test:ui
 npm run test:rust
-npm run desktop:build -- --target x86_64-pc-windows-msvc -- --locked
+npm run desktop:build:x64
 npm run release:package
 ```
 

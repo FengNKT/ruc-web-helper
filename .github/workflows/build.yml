@@ -57,7 +57,7 @@ jobs:
       - run: npm run test:ui
       - run: npm run test:rust
       - name: Build portable executable
-        run: npm run desktop:build -- --target x86_64-pc-windows-msvc -- --locked
+        run: npm run desktop:build:x64
       - name: Package clean release files
         run: ./scripts/package-release.ps1
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
