@@ -44,7 +44,7 @@ jobs:
         with:
           name: windows-x86_64-release
           path: release-assets
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22.14.0'
           package-manager-cache: false
