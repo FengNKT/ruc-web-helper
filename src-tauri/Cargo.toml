@@ -1,0 +1,37 @@
+[package]
+name = "ruc-web-helper"
+version = "1.0.0"
+edition = "2021"
+description = "RUC Web Helper"
+license = "AGPL-3.0-only"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-single-instance = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-opener = "2"
+reqwest = { version = "0.12", default-features = false, features = ["cookies", "json", "rustls-tls-native-roots"] }
+tokio = { version = "1", features = ["sync", "time"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+regex = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+md-5 = "0.10"
+hmac = "0.12"
+sha1 = "0.10"
+base64 = "0.22"
+zeroize = { version = "1", features = ["derive"] }
+keyring = { version = "3.6.3", features = ["windows-native"] }
+
+windows-registry = "0.6.1"
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Cryptography"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

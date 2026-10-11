@@ -1,0 +1,102 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>人大校园网助手</title><script src="/theme-init.js"></script><link rel="icon" type="image/svg+xml" href="/app-icon.svg"><meta name="application-name" content="人大校园网助手"><meta name="description" content="RUC Web Helper"></head><body><div id="ruc-prototype" aria-label="人大校园网助手">
+  <div class="ruc-shell">
+    <aside class="ruc-sidebar">
+      <nav aria-label="主导航">
+        <button type="button" data-page="overview" class="ruc-nav cursor-interaction" aria-current="page"><i data-lucide="layout-dashboard" aria-hidden="true"></i>概览</button>
+        <button type="button" data-page="devices" class="ruc-nav cursor-interaction"><i data-lucide="monitor-smartphone" aria-hidden="true"></i>设备<span class="ruc-count">—</span></button>
+        <button type="button" data-page="records" class="ruc-nav cursor-interaction"><i data-lucide="chart-no-axes-combined" aria-hidden="true"></i>统计</button>
+        <button type="button" data-page="settings" class="ruc-nav cursor-interaction"><i data-lucide="settings-2" aria-hidden="true"></i>设置</button>
+      </nav>
+      <div class="ruc-profile"><span class="ruc-avatar">我</span><div>校园账号<small data-profile-account>尚未保存账号</small></div><span class="ruc-profile-dot"></span></div>
+    </aside>
+    <main class="ruc-main">
+      <section data-panel="overview">
+        <header class="ruc-heading"><div><h1>网络概览</h1></div><button type="button" class="ruc-button ruc-icon-button cursor-interaction" data-refresh><i data-lucide="refresh-cw" aria-hidden="true"></i><span>刷新</span></button></header>
+        <div class="ruc-connection">
+          <div class="ruc-status-icon"><i data-lucide="wifi" aria-hidden="true"></i></div>
+          <div class="ruc-status-copy"><div class="ruc-status-label"><h2 data-status-title>正在检查校园网</h2><span class="ruc-badge" data-online-badge>检查中</span></div><p data-status-detail>正在检查连接状态</p></div>
+          <button type="button" class="ruc-button cursor-interaction" data-connect>断开连接</button>
+        </div>
+        <div class="ruc-section-label"><h2>流量与余额</h2><span data-billing-cycle>—</span></div>
+        <div class="ruc-usage">
+          <div class="ruc-flow"><div class="ruc-eyebrow">剩余可用流量</div><div class="ruc-big-number" data-remain>—</div>
+            <div class="ruc-meter ruc-quota-meter" role="img" aria-label="流量数据暂不可用" hidden><span data-quota-segment="used"></span><span data-quota-segment="free"></span><span data-quota-segment="paid"></span></div>
+            <div class="ruc-quota-legend"><div><span><i class="ruc-quota-used" aria-hidden="true"></i>已用流量</span><strong data-used>—</strong></div><div><span><i class="ruc-quota-free" aria-hidden="true"></i>剩余免费流量</span><strong data-free>—</strong></div><div><span><i class="ruc-quota-paid" aria-hidden="true"></i>剩余收费流量</span><strong data-paid>—</strong></div></div>
+            <p class="ruc-quota-note">每月免费 100 GB · 超出 0.5 元/GB<br>收费额度按整 GB 计算</p>
+          </div>
+          <div class="ruc-balance"><div class="ruc-eyebrow">账户余额</div><div class="ruc-balance-number" data-balance>—</div><button type="button" class="ruc-text-button cursor-interaction" data-official>前往官网充值 <i data-lucide="arrow-up-right" aria-hidden="true"></i></button></div>
+        </div>
+        <div class="ruc-section-label"><h2>在线设备 <span class="ruc-inline-count" data-device-number>—</span></h2><button type="button" class="ruc-text-button cursor-interaction" data-goto="devices">管理设备 <i data-lucide="arrow-right" aria-hidden="true"></i></button></div>
+        <div data-overview-devices><p class="ruc-faint-note">正在读取在线设备…</p></div>
+        <div class="ruc-auto-note"><i data-lucide="zap" aria-hidden="true"></i><span data-auto-note>自动登录尚未开启</span><button type="button" class="ruc-text-button cursor-interaction" data-goto="settings">设置</button></div>
+      </section>
+      <section data-panel="devices" hidden>
+        <header class="ruc-heading"><div><h1>我的设备</h1></div><div class="ruc-heading-actions"><button type="button" class="ruc-text-button" data-view-ignored>查看已忽略设备（0）</button><button type="button" class="ruc-button cursor-interaction" data-refresh><i data-lucide="refresh-cw" aria-hidden="true"></i>刷新</button></div></header>
+        <div class="ruc-device-toolbar"><span data-device-summary></span><label>显示 <select data-device-filter aria-label="设备范围"><option value="all">全部设备</option><option value="online">在线设备</option><option value="historical">历史设备</option></select></label></div>
+        <div class="ruc-list-heading"><span>设备</span><span>状态与操作</span></div>
+        <div data-all-devices><p class="ruc-faint-note">正在读取设备…</p></div>
+        <div class="ruc-faint-note" data-device-error></div>
+      </section>
+      <section data-panel="ignored-devices" hidden>
+        <button type="button" class="ruc-text-button ruc-back-button" data-return-devices><i data-lucide="arrow-left" aria-hidden="true"></i>返回我的设备</button><header class="ruc-heading"><div><h1>已忽略设备</h1></div></header>
+        <div class="ruc-list-heading"><span>设备</span><span>状态与操作</span></div>
+        <div data-ignored-devices></div>
+      </section>
+      <section data-panel="records" hidden>
+        <header class="ruc-heading"><div><h1>数据统计</h1></div><button type="button" class="ruc-button" data-traffic-refresh><i data-lucide="refresh-cw" aria-hidden="true"></i>刷新数据</button></header>
+        <div class="ruc-statistics-filters" aria-label="数据范围">
+          <label>月份<select data-month aria-label="统计月份"></select></label>
+          <label data-statistics-device-filter>设备<select data-traffic-device aria-label="筛选统计设备" disabled><option value="all">全部设备</option></select></label>
+        </div>
+        <div class="ruc-record-tabs" role="tablist" aria-label="统计视图">
+          <button type="button" id="month-tab" role="tab" aria-selected="true" aria-controls="month-panel" data-record-tab="traffic">月统计</button>
+          <button type="button" id="day-tab" role="tab" aria-selected="false" aria-controls="day-panel" data-record-tab="day">日统计</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="history-panel" data-record-tab="history">会话统计</button>
+        </div>
+        <p data-traffic-status role="status" class="ruc-faint-note">选择月份后读取统计</p>
+        <div id="traffic-panel">
+          <div data-traffic-content hidden>
+            <div id="month-panel" role="tabpanel" aria-labelledby="month-tab">
+              <div class="ruc-traffic-summary"><div><span data-traffic-total-label>所选月份估算用量</span><strong data-traffic-total>—</strong></div><div><span>日均估算</span><strong data-traffic-average>—</strong></div><div><span>最高用量日</span><strong data-traffic-peak>—</strong></div></div>
+              <section class="ruc-statistics-section"><h2>月度设备分布</h2>
+                <div data-month-pie class="ruc-month-pie"></div>
+                <div data-traffic-ranking data-traffic-legend class="ruc-month-device-legend"></div>
+              </section>
+              <section class="ruc-statistics-section"><div class="ruc-traffic-toolbar"><h2>每日用量趋势</h2><span class="ruc-traffic-note">点击柱图查看当日数据</span></div>
+                <div data-traffic-chart class="ruc-traffic-chart"></div>
+              </section>
+            </div>
+            <div id="day-panel" role="tabpanel" aria-labelledby="day-tab" hidden>
+              <div class="ruc-day-heading" data-statistics-day-filter hidden><label>查看日期 <select data-traffic-day aria-label="选择统计日期" disabled></select></label></div>
+              <div data-traffic-day-detail aria-live="polite"></div>
+            </div>
+            <details class="ruc-traffic-notes"><summary>统计口径与数据范围</summary><p>按北京时间，将结束会话的流量按每天持续时长比例分配。结果为估算，正在进行的连接尚未计入。</p><p data-traffic-coverage></p><p>没有结束会话不等于没有联网。记录更新后，估算结果可能变化；未结束会话不能按设备估算。跨月会话仅计入与所选月份重叠的时长。超出查询窗口的超长连接可能遗漏。</p><p data-traffic-official></p></details>
+          </div>
+        </div>
+        <div id="history-panel" role="tabpanel" aria-label="会话统计" hidden>
+        <div class="ruc-table-wrap"><table class="ruc-table"><thead><tr><th>设备</th><th>接入时间</th><th>接入 IP</th><th>在线时长</th><th>当月分配</th><th>会话总量</th></tr></thead><tbody data-record-body><tr><td colspan="6">选择月份后获取会话数据</td></tr></tbody></table></div>
+        <div class="ruc-record-footer"><span class="ruc-faint-note" data-record-info>选择月份查看上网记录</span><button class="ruc-button" type="button" data-record-prev>上一页</button><button class="ruc-button" type="button" data-record-next>下一页</button></div>
+        </div>
+      </section>
+      <section data-panel="settings" hidden>
+        <header class="ruc-heading"><div><h1>设置</h1></div></header>
+        <h2 class="ruc-settings-title">外观</h2>
+        <label class="ruc-setting ruc-theme-setting"><span><strong>主题模式</strong><small>跟随系统时随 Windows 外观自动切换</small></span><select data-theme aria-label="主题模式" disabled><option value="light">浅色</option><option value="dark">深色</option><option value="system" selected>跟随系统</option></select></label>
+        <h2 class="ruc-settings-title">自动连接</h2>
+        <div class="ruc-setting"><span><strong>开机自启</strong><small>在托盘中自动运行，不打开主窗口</small></span><input type="checkbox" role="switch" aria-label="开机自启" data-setting="startup"></div>
+        <div class="ruc-setting"><span><strong>自动登录校园网</strong><small id="auto-login-description" data-auto-description>请先在“管理账号”中保存账号和密码</small></span><input type="checkbox" role="switch" aria-label="自动登录校园网" data-setting="auto" aria-describedby="auto-login-description" disabled></div>
+        <div class="ruc-setting"><span><strong>休眠唤醒后恢复连接</strong><small>网络就绪后检查登录状态</small></span><input type="checkbox" role="switch" aria-label="休眠唤醒后恢复连接" data-setting="wake"></div>
+        <h2 class="ruc-settings-title">提醒与账号</h2>
+        <div class="ruc-setting"><span><strong>低流量提醒</strong><small>剩余可用流量低于 5 GB 时提醒</small></span><input type="checkbox" role="switch" aria-label="低流量提醒" data-setting="notice"></div>
+        <div class="ruc-setting"><span><strong>校园账号</strong><small><span data-account-label>尚未保存账号</span></small></span><button type="button" class="ruc-button cursor-interaction" data-account>管理账号</button></div>
+        <p class="ruc-faint-note">版本 <span data-app-version>—</span></p>
+        <p class="ruc-faint-note">开源许可证 AGPL v3</p>
+      </section>
+    </main>
+  </div>
+  <div class="ruc-dialog-layer" data-dialog hidden><div class="ruc-dialog" role="dialog" aria-modal="true" aria-labelledby="ruc-dialog-title"><div class="ruc-dialog-mark"><i data-lucide="unplug" aria-hidden="true"></i></div><h2 id="ruc-dialog-title">断开校园网？</h2><p data-dialog-copy>断开后将暂停自动登录，直到你再次点击连接。</p><div class="ruc-dialog-buttons"><button type="button" class="ruc-button cursor-interaction" data-cancel>取消</button><button type="button" class="ruc-button ruc-primary cursor-interaction" data-confirm>确认断开</button></div></div></div>
+<div class="ruc-dialog-layer" data-account-dialog hidden><form class="ruc-dialog ruc-account-form" role="dialog" aria-modal="true" aria-labelledby="account-title"><h2 id="account-title">校园账号</h2><p>填写数智人大账号。密码加密保存在程序目录。</p><label>学工号<input name="username" autocomplete="username" required maxlength="128"></label><label>密码<input name="password" type="password" autocomplete="new-password" placeholder="请输入密码" aria-describedby="account-password-hint" required maxlength="512"></label><p id="account-password-hint" data-password-hint>尚未配置密码，请输入密码后保存。</p><p class="ruc-form-error" role="alert" data-account-error></p><div class="ruc-dialog-buttons"><button type="button" class="ruc-text-button" data-forget>删除账号</button><button type="button" class="ruc-button" data-account-cancel>取消</button><button type="submit" class="ruc-button ruc-primary">保存账号</button></div></form></div>
+  <div class="ruc-dialog-layer" data-device-name-dialog hidden><form class="ruc-dialog ruc-device-name-form" role="dialog" aria-modal="true" aria-labelledby="device-name-title"><h2 id="device-name-title">设备命名</h2><p>名称保存在本机，按 MAC 关联设备与历史流量。</p><p class="ruc-device-mac" data-device-name-mac></p><label>设备名称<input name="deviceName" maxlength="40" autocomplete="off" placeholder="例如：我的电脑"></label><p class="ruc-form-error" role="alert" data-device-name-error></p><div class="ruc-dialog-buttons"><button type="button" class="ruc-text-button" data-device-name-reset>恢复默认名称</button><button type="button" class="ruc-button" data-device-name-cancel>取消</button><button type="submit" class="ruc-button ruc-primary">保存名称</button></div></form></div>
+  <div class="ruc-toast" role="status" aria-live="polite" hidden></div>
+</div>
+<script type="module" src="/src/main.js"></script></body></html>

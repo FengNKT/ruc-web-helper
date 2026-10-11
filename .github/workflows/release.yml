@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag (for example v1.0.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      release-tag: ${{ inputs.tag || github.ref_name }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      BUILD_COMMIT: ${{ needs.build.outputs.commit }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.build.outputs.commit }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: windows-x86_64-release
+          path: release-assets
+      - name: Verify release assets and source tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/version.cjs --check
+          test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$BUILD_COMMIT"
+          version="${RELEASE_TAG#v}"
+          base="ruc-web-helper_${version}_windows-x86_64"
+          test -f "release-assets/${version}/$base.exe"
+          test -f "release-assets/${version}/${base}_portable.zip"
+          cd "release-assets/${version}"
+          sha256sum --check SHA256SUMS.txt
+      - name: Upload and publish release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = $env:RELEASE_TAG.Substring(1)
+          $existing = gh release view $env:RELEASE_TAG --json isDraft 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            if (!(($existing | ConvertFrom-Json).isDraft)) { throw 'This release is already public; published assets will not be overwritten.' }
+          } else {
+            gh release create $env:RELEASE_TAG --verify-tag --draft --title "人大校园网助手 $version" --notes-file "docs/releases/$version.md"
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create draft release.' }
+          }
+          $files = @(Get-ChildItem -LiteralPath "release-assets/$version" -File)
+          if ($files.Count -ne 3) { throw 'Expected EXE, ZIP and SHA256SUMS.txt.' }
+          gh release upload $env:RELEASE_TAG @($files.FullName) --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Asset upload failed; release remains a draft.' }
+          $remote = gh release view $env:RELEASE_TAG --json assets | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Could not verify uploaded assets.' }
+          if (@($remote.assets).Count -ne 3) { throw 'Unexpected draft assets; review before publishing.' }
+          foreach ($file in $files) {
+            $match = @($remote.assets | Where-Object { $_.name -eq $file.Name -and $_.size -eq $file.Length -and $_.state -eq 'uploaded' })
+            if ($match.Count -ne 1) { throw "Uploaded asset verification failed: $($file.Name)" }
+          }
+          gh release edit $env:RELEASE_TAG --draft=false --latest --notes-file "docs/releases/$version.md"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not publish release.' }

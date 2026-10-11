@@ -1,0 +1,26 @@
+[
+  {
+    "username": "test-student",
+    "password": "P@ssw0rd!",
+    "ip": "10.46.1.2",
+    "acid": "1",
+    "token": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "expected": {
+      "password": "{MD5}592c003c06e1b7da1c512a2fa0178f0e",
+      "info": "{SRBX1}+4y99+FSOXqhk2JfrsOYMez4W7xbRPGSwSytuITs/yU7FAbrrMaezJ229rlDoO++ulcem78LFi+JIJJoL1eurTcAlapbe9IjP9+kQvDDJISEMvwVfU6jNLbdYG3MWnapnTBz2QL8F82=",
+      "chksum": "745a802e07a15633636c4ef76a539de06fd19f11"
+    }
+  },
+  {
+    "username": "student2026",
+    "password": "测试🔑A&B=",
+    "ip": "10.46.9.8",
+    "acid": "12",
+    "token": "abcdef1234567890",
+    "expected": {
+      "password": "{MD5}1be7f32376a2d05a7b7ffa57c755dacc",
+      "info": "{SRBX1}E6GCfy6NYPyjA8n84MC4Ava8XTctrS3oUw2adKb37jeQO+/mTT/qOUEhR95zsPQFbgeAwNbN4OPHwDCLwfr/lOOz0qKMXRxpmTq6p9KT6Tq3isIduQ3d63KyuZpdKjsPozjwoPiqoSt=",
+      "chksum": "94de3dc085a219b554d23ed183cc7fb2c1682f6c"
+    }
+  }
+]

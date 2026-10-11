@@ -1,0 +1,46 @@
+# Dependencies and build caches (keep package-lock.json and Cargo.lock).
+node_modules/
+/dist/
+/src-tauri/target/
+/src-tauri/gen/schemas/
+
+# Local portable application, release archives and test output.
+/交付/
+/release/
+/artifacts/
+/test-results/
+/playwright-report/
+/coverage/
+*.log
+
+# Runtime data: never publish credentials, settings, device identities or WebView data.
+**/account.enc*
+**/settings.json*
+**/settings.tmp
+**/settings-v2.json*
+**/devices.json*
+**/devices.tmp
+**/device-names.json*
+**/device-names.tmp
+**/webview-data/
+
+# Local secrets and machine-specific configuration.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+/.local/
+/.codex/
+
+# Editors and operating systems.
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>人大校园网助手</title>
+  <desc>朱红圆角方形内，以白色人字与两道网络信号弧线构成标志。</desc>
+  <rect x="32" y="32" width="448" height="448" rx="108" fill="#AE1833"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M164 195 Q256 111 348 195"/>
+    <path d="M207 237 Q256 192 305 237"/>
+    <path d="M256 281 C247 332 216 365 166 394"/>
+    <path d="M256 281 C269 334 301 367 346 394"/>
+  </g>
+</svg>
