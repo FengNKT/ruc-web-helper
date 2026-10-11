@@ -23,6 +23,9 @@ node_modules/
 **/device-names.json*
 **/device-names.tmp
 **/webview-data/
+**/.updates/
+**/updater.json*
+**/updater.tmp
 
 # Local secrets and machine-specific configuration.
 .env

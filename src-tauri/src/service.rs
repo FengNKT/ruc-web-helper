@@ -59,15 +59,24 @@ mod theme_tests {
     use super::*;
     #[test]
     fn theme_settings_preserve_old_configuration() {
-        let old: Settings = serde_json::from_str(r#"{"startup":true,"auto":true,"wake":false,"notice":true}"#).unwrap();
+        let old: Settings =
+            serde_json::from_str(r#"{"startup":true,"auto":true,"wake":false,"notice":true}"#)
+                .unwrap();
         assert_eq!(old.theme, ThemePreference::System);
         assert!(old.startup && old.auto && !old.wake && old.notice);
-        for (text, expected) in [("light", ThemePreference::Light), ("dark", ThemePreference::Dark), ("system", ThemePreference::System)] {
-            let settings: Settings = serde_json::from_value(serde_json::json!({"theme":text})).unwrap();
+        for (text, expected) in [
+            ("light", ThemePreference::Light),
+            ("dark", ThemePreference::Dark),
+            ("system", ThemePreference::System),
+        ] {
+            let settings: Settings =
+                serde_json::from_value(serde_json::json!({"theme":text})).unwrap();
             assert_eq!(settings.theme, expected);
             assert_eq!(serde_json::to_value(&settings).unwrap()["theme"], text);
         }
-        assert!(serde_json::from_value::<Settings>(serde_json::json!({"theme":"invalid"})).is_err());
+        assert!(
+            serde_json::from_value::<Settings>(serde_json::json!({"theme":"invalid"})).is_err()
+        );
     }
 }
 

@@ -17,6 +17,7 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
     const page=await browser.newPage({viewport:{width:1040,height:820}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.addInitScript(version=>{
       window.isTauri=true;window.__calls=[];
+      const update={preferences:{automatic:true,network:'system'},status:'idle',message:'尚未检查更新',release:null,checked:0,downloaded:0,skipped:false};
       const preferences={settings:{startup:false,auto:false,wake:true,notice:true},username:'',hasCredentials:false,paused:false,automaticError:''};
       const deviceNames={};
       const snapshot={authenticated:true,username:'test-student',ip:'10.0.0.2',status:'E0000',message:'已登录校园网',usedBytes:1000000000,remainBytes:9000000000,packageRemainBytes:9000000000,balance:12.34,checkoutDate:null,warnings:[],devices:[{id:1,name:'Test laptop',os:'Windows',ip:'10.0.0.2',online:1,current:true},{id:2,name:'<img src=x onerror=alert(1)>',os:'iOS',ip:'10.0.0.3',online:'1',current:false}]};
@@ -25,6 +26,17 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
         window.__calls.push(cmd);
         if(cmd.startsWith('plugin:event|'))return 1;
         if(cmd==='plugin:app|version')return version;
+        if(cmd==='get_update_state')return structuredClone(update);
+        if(cmd==='set_update_preferences'){update.preferences=args.preferences;return structuredClone(update);}
+        if(cmd==='check_update'){
+          if(window.__updateFail)throw '更新网络不可用';
+          Object.assign(update,{status:'available',message:'发现新版本 9.0.0',skipped:false,checked:1791690000,release:{version:'9.0.0',notes:'<img src=x onerror=alert(1)>\n更新说明',publishedAt:'2026-10-11T00:00:00Z',size:10000000,signed:true}});
+          return structuredClone(update);
+        }
+        if(cmd==='download_update'){Object.assign(update,{status:'ready',message:'更新已下载，可重启更新',downloaded:10000000});return structuredClone(update);}
+        if(cmd==='skip_update'){update.skipped=true;return structuredClone(update);}
+        if(cmd==='open_update_release')return null;
+        if(cmd==='install_update'){update.status='installing';return structuredClone(update);}
         if(cmd==='get_preferences')return structuredClone(preferences);
         if(cmd==='get_snapshot'){if(window.__fail)throw '网络请求超时';await new Promise(r=>setTimeout(r,500));return structuredClone(snapshot);}
         if(cmd==='set_device_ignored'){
@@ -66,6 +78,39 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
     assert.equal(await page.locator('meta[name="description"]').getAttribute('content'),'RUC Web Helper');
     await page.locator('[data-page="settings"]').click();
     await page.waitForFunction(()=>!document.querySelector('[data-theme]').disabled);
+    await page.waitForFunction(()=>!document.querySelector('[data-update-network]').disabled);
+    assert.equal(await page.locator('[data-update-network]').inputValue(),'system');
+    assert.equal(await page.locator('[data-update-automatic]').isChecked(),true);
+    await page.locator('[data-update-automatic]').locator('..').locator('strong').click();
+    assert.equal(await page.locator('[data-update-automatic]').isChecked(),true,'Update switch text must not toggle');
+    await page.locator('[data-update-automatic]').uncheck();
+    await page.waitForFunction(()=>!document.querySelector('[data-update-automatic]').disabled);
+    assert.equal(await page.locator('[data-update-automatic]').isChecked(),false);
+    await page.locator('[data-update-network]').selectOption('direct');
+    await page.waitForFunction(()=>!document.querySelector('[data-update-network]').disabled);
+    assert.equal(await page.locator('[data-update-network]').inputValue(),'direct');
+    await page.evaluate(()=>window.__updateFail=true);
+    await page.locator('[data-update-check]').click();
+    await page.waitForFunction(()=>document.querySelector('[data-update-status]').textContent==='更新网络不可用');
+    await page.evaluate(()=>window.__updateFail=false);
+    await page.locator('[data-update-check]').click();
+    await page.waitForFunction(()=>!document.querySelector('[data-update-download]').hidden);
+    assert.equal(await page.locator('[data-update-notes] img').count(),0,'Release notes must render as text');
+    await page.locator('[data-update-skip]').click();
+    await page.waitForFunction(()=>document.querySelector('.ruc-update-banner').hidden);
+    await page.locator('[data-update-check]').click();
+    await page.locator('[data-update-download]').click();
+    await page.waitForFunction(()=>!document.querySelector('[data-update-install]').hidden);
+    assert.equal(await page.locator('[data-update-check]').isDisabled(),true);
+    await page.locator('[data-update-install]').click();
+    assert.equal(await page.locator('[data-update-confirm]').isVisible(),true);
+    await page.locator('[data-update-later]').click();
+    assert.equal(await page.locator('[data-update-confirm]').isVisible(),false);
+    assert.equal(await page.evaluate(()=>window.__calls.includes('install_update')),false,'Downloading or deferring must not install automatically');
+    await page.locator('[data-update-install]').click();
+    await page.locator('[data-update-confirm-install]').click();
+    await page.waitForFunction(()=>window.__calls.includes('install_update'));
+    await page.locator('[data-panel="settings"]').evaluate(e=>e.closest('.ruc-main').scrollTop=0);
     const automatic=page.locator('[data-setting="auto"]');
     assert.equal(await automatic.isDisabled(),true,'Online account does not count as saved credentials');
     assert.equal(await automatic.isChecked(),false);

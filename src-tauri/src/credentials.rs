@@ -93,9 +93,15 @@ pub fn delete(path: &Path) -> Result<(), String> {
     }
 }
 pub fn update(path: &Path, username: String, password: String) -> Result<(), String> {
-    let account = Account { username: username.trim().to_string(), password };
-    if account.username.is_empty() || account.username.len() > 128
-        || account.username.chars().any(char::is_control) || account.password.len() > 512 {
+    let account = Account {
+        username: username.trim().to_string(),
+        password,
+    };
+    if account.username.is_empty()
+        || account.username.len() > 128
+        || account.username.chars().any(char::is_control)
+        || account.password.len() > 512
+    {
         return Err("请填写有效的学工号和密码".into());
     }
     if account.password.is_empty() {
@@ -138,7 +144,10 @@ mod tests {
     use super::*;
     #[test]
     fn password_update_retains_blank_and_requires_password_for_new_account() {
-        let root = std::env::temp_dir().join(format!("ruc-credentials-update-test-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!(
+            "ruc-credentials-update-test-{}",
+            std::process::id()
+        ));
         std::fs::create_dir_all(&root).unwrap();
         let path = root.join("account.enc");
         delete(&path).unwrap();
@@ -150,10 +159,14 @@ mod tests {
         assert!(update(&path, "student-b".into(), "".into()).is_err());
         assert_eq!(std::fs::read(&path).unwrap(), original);
         update(&path, "student-a".into(), "fictional-new-password".into()).unwrap();
-        assert_eq!(load(&path).unwrap().unwrap().password, "fictional-new-password");
+        assert_eq!(
+            load(&path).unwrap().unwrap().password,
+            "fictional-new-password"
+        );
         update(&path, "student-b".into(), "fictional-other-password".into()).unwrap();
         assert_eq!(load(&path).unwrap().unwrap().username, "student-b");
-        delete(&path).unwrap();std::fs::remove_dir(root).unwrap();
+        delete(&path).unwrap();
+        std::fs::remove_dir(root).unwrap();
     }
     #[test]
     fn encrypted_file_roundtrip_replace_corruption_and_delete() {

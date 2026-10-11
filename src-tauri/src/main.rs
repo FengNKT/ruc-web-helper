@@ -6,6 +6,10 @@ mod device_names;
 mod portal;
 mod protocol;
 mod service;
+mod update_install;
+mod update_manifest;
+mod update_network;
+mod updater;
 
 use tauri::{
     menu::{Menu, MenuItem},
@@ -22,6 +26,9 @@ fn show_main(app: &tauri::AppHandle) {
 }
 
 fn main() {
+    if update_install::helper_mode() {
+        return;
+    }
     tauri::Builder::default()
         .plugin(
             tauri_plugin_autostart::Builder::new()
@@ -48,6 +55,7 @@ fn main() {
                 }
             }
             app.manage(service::Service::new(directory.clone(), legacy)?);
+            app.manage(updater::Updater::new(directory.clone()));
             let theme = app.state::<service::Service>().settings().theme.native();
             tauri::WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?
                 .theme(theme)
@@ -90,6 +98,8 @@ fn main() {
                 }
             }
             service::start_worker(app.handle().clone());
+            update_install::acknowledge(&directory);
+            updater::start_worker(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -105,7 +115,15 @@ fn main() {
             service::get_traffic_data,
             service::set_device_name,
             service::set_device_ignored,
-            service::open_official
+            service::open_official,
+            updater::get_update_state,
+            updater::set_update_preferences,
+            updater::check_update,
+            updater::download_update,
+            updater::cancel_update,
+            updater::skip_update,
+            updater::install_update,
+            updater::open_update_release
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

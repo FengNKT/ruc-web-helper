@@ -39,6 +39,7 @@ const path=require('node:path');
       window.__TAURI_INTERNALS__={transformCallback:()=>1,unregisterCallback:()=>{},invoke:async(cmd,args)=>{
         if(cmd.startsWith('plugin:event|'))return 1;
         if(cmd==='plugin:app|version')return version;
+        if(cmd==='get_update_state')return {preferences:{automatic:true,network:'system'},status:'current',message:'当前已是最新版本',release:null,checked:1791690000,downloaded:0,skipped:false};
         if(cmd==='get_preferences')return structuredClone(preferences);
         if(cmd==='get_snapshot')return structuredClone(snapshot);
         if(cmd==='get_traffic_data'){
@@ -65,6 +66,8 @@ const path=require('node:path');
     await capture('overview');
     await page.locator('[data-page="settings"]').click();
     await capture('settings');
+    await page.locator('[data-update-card]').scrollIntoViewIfNeeded();
+    await capture('updates');
     await page.setViewportSize({width:1040,height:1450});
     await page.locator('[data-page="records"]').click();
     await page.locator('[data-traffic-total]').filter({hasText:'36.80 GB'}).waitFor();
@@ -74,7 +77,7 @@ const path=require('node:path');
     await page.selectOption('[data-traffic-day]','7');
     await capture('daily-statistics');
     if(errors.length)throw Error(errors.join('\n'));
-    process.stdout.write('Saved 4 documentation screenshots with fictional data.\n');
+    process.stdout.write('Saved 5 documentation screenshots with fictional data.\n');
   }finally{
     if(browser)await browser.close();
     await new Promise(resolve=>server.close(resolve));

@@ -109,7 +109,8 @@ mod tests {
     #[test]
     fn matches_school_javascript_vectors() {
         let vectors: serde_json::Value =
-            serde_json::from_str(include_str!("../../tests/fixtures/protocol-vectors.json")).unwrap();
+            serde_json::from_str(include_str!("../../tests/fixtures/protocol-vectors.json"))
+                .unwrap();
         for vector in vectors.as_array().unwrap() {
             let params = login_parameters(
                 vector["username"].as_str().unwrap(),

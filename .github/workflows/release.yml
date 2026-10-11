@@ -44,6 +44,10 @@ jobs:
         with:
           name: windows-x86_64-release
           path: release-assets
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22.14.0'
+          package-manager-cache: false
       - name: Verify release assets and source tag
         shell: bash
         run: |
@@ -55,6 +59,15 @@ jobs:
           test -f "release-assets/${version}/$base.exe"
           test -f "release-assets/${version}/${base}_portable.zip"
           cd "release-assets/${version}"
+          sha256sum --check SHA256SUMS.txt
+      - name: Sign portable update manifest
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/sign-update.cjs "release-assets/${RELEASE_TAG#v}"
+          cd "release-assets/${RELEASE_TAG#v}"
           sha256sum --check SHA256SUMS.txt
       - name: Upload and publish release
         shell: pwsh
@@ -69,12 +82,12 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Could not create draft release.' }
           }
           $files = @(Get-ChildItem -LiteralPath "release-assets/$version" -File)
-          if ($files.Count -ne 3) { throw 'Expected EXE, ZIP and SHA256SUMS.txt.' }
+          if ($files.Count -ne 5) { throw 'Expected EXE, ZIP, signed update manifest and SHA256SUMS.txt.' }
           gh release upload $env:RELEASE_TAG @($files.FullName) --clobber
           if ($LASTEXITCODE -ne 0) { throw 'Asset upload failed; release remains a draft.' }
           $remote = gh release view $env:RELEASE_TAG --json assets | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0) { throw 'Could not verify uploaded assets.' }
-          if (@($remote.assets).Count -ne 3) { throw 'Unexpected draft assets; review before publishing.' }
+          if (@($remote.assets).Count -ne 5) { throw 'Unexpected draft assets; review before publishing.' }
           foreach ($file in $files) {
             $match = @($remote.assets | Where-Object { $_.name -eq $file.Name -and $_.size -eq $file.Length -and $_.state -eq 'uploaded' })
             if ($match.Count -ne 1) { throw "Uploaded asset verification failed: $($file.Name)" }

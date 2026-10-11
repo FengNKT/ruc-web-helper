@@ -9,6 +9,7 @@ import './style.css';
 import {applyTheme} from './theme.js';
 import {setupTraffic} from './traffic-view.js';
 import {normalizeMac} from './traffic.js';
+import {setupUpdates} from './update-view.js';
 
 const root = document.getElementById('ruc-prototype');
 const q = selector => root.querySelector(selector);
@@ -21,6 +22,7 @@ let accountOperation=false;
 let namingDevice=null,namingBusy=false,namePreviousFocus;
 let deviceFocus='';
 const traffic=setupTraffic(root,call,openDeviceName,showDevice,acceptTrafficDevices);
+setupUpdates(root,call,listen,changePage);
 
 function acceptTrafficDevices(result){
   if(!state.snapshot||state.snapshot.username!==result.username)return;

@@ -89,7 +89,29 @@
         <h2 class="ruc-settings-title">提醒与账号</h2>
         <div class="ruc-setting"><span><strong>低流量提醒</strong><small>剩余可用流量低于 5 GB 时提醒</small></span><input type="checkbox" role="switch" aria-label="低流量提醒" data-setting="notice"></div>
         <div class="ruc-setting"><span><strong>校园账号</strong><small><span data-account-label>尚未保存账号</span></small></span><button type="button" class="ruc-button cursor-interaction" data-account>管理账号</button></div>
-        <p class="ruc-faint-note">版本 <span data-app-version>—</span></p>
+        <h2 class="ruc-settings-title">软件更新</h2>
+        <div class="ruc-setting"><span><strong>当前版本 <span data-app-version>—</span></strong><small data-update-checked>尚未检查更新</small></span><button type="button" class="ruc-button" data-update-check>检查更新</button></div>
+        <div class="ruc-setting"><span><strong>自动检查更新</strong><small>有新版本时提醒，由你决定何时下载和更新</small></span><input type="checkbox" role="switch" aria-label="自动检查更新" data-update-automatic disabled></div>
+        <label class="ruc-setting ruc-theme-setting"><span><strong>更新网络</strong><small>仅用于软件更新；校园网登录和查询始终直连</small></span><select data-update-network aria-label="更新网络" disabled><option value="system">跟随系统代理</option><option value="direct">直接连接</option></select></label>
+        <div class="ruc-update-card" data-update-card aria-live="polite">
+          <strong data-update-status>正在读取更新设置…</strong>
+          <p class="ruc-faint-note" data-update-info hidden></p>
+          <progress data-update-progress aria-label="更新下载进度" max="100" value="0" hidden></progress>
+          <p class="ruc-faint-note" data-update-progress-text hidden></p>
+          <details data-update-notes-box hidden><summary>更新说明</summary><div data-update-notes class="ruc-update-notes"></div></details>
+          <div class="ruc-update-actions">
+            <button type="button" class="ruc-button ruc-primary" data-update-download hidden>下载更新</button>
+            <button type="button" class="ruc-button ruc-primary" data-update-install hidden>重启并更新</button>
+            <button type="button" class="ruc-button" data-update-cancel hidden>取消下载</button>
+            <button type="button" class="ruc-button" data-update-release hidden>查看发布页面</button>
+            <button type="button" class="ruc-button" data-update-skip hidden>暂不提醒此版本</button>
+          </div>
+          <div data-update-confirm hidden class="ruc-update-confirm">
+            <p>助手将短暂关闭并重新打开。账号、设置和设备名称会保留，校园网连接不会主动断开。</p>
+            <button type="button" class="ruc-button ruc-primary" data-update-confirm-install>确认重启更新</button>
+            <button type="button" class="ruc-button" data-update-later>稍后</button>
+          </div>
+        </div>
         <p class="ruc-faint-note">开源许可证 AGPL v3</p>
       </section>
     </main>

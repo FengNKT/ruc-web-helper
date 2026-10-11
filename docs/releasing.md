@@ -133,3 +133,17 @@ npm run release:package
 AGPL v3 完整文本随源码和便携包提供；第三方依赖遵循各自许可证，公开发布前应完成相应许可与必要通知核查。
 
 参考：[GitHub 工作流自动凭据](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token)、[GitHub CLI 发布命令](https://cli.github.com/manual/gh_release_create)。
+
+## 1.1.0 起的签名更新附件
+
+发布任务在上传前调用 `scripts/sign-update.cjs`，使用仓库 Secret `UPDATE_SIGNING_KEY` 生成 `update.json` 和 `update.json.sig`，并更新 SHA256SUMS。发布附件数因此为五个。构建与普通 PR 不接触签名密钥，只有正式发布步骤使用它。
+
+该 Secret 已为本仓库配置。客户端公钥位于 `src-tauri/update-public-key.txt`，本地私钥备份位于忽略目录 `.local/update-signing.key`；不要提交或公开私钥，不要随意重置密钥。签名脚本会核对公私钥是否配对，缺少密钥时停止发布。
+
+本地打包后可运行：
+
+```powershell
+node scripts/sign-update.cjs release/1.1.0 .local/update-signing.key
+```
+
+客户端只安装正式发布且签名有效的后续版本。详细实现与限制见[自动更新说明](updating.md)。

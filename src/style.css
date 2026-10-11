@@ -162,3 +162,15 @@ html,body{height:100%;overflow:hidden}
   #ruc-prototype .ruc-usage{grid-template-columns:minmax(0,1fr)}
   #ruc-prototype .ruc-balance{border-left:0;border-top:1px solid var(--ruc-line);padding:17px 0 0}
 }
+
+/* Software updates share the theme palette and stay inside the scrolling page. */
+#ruc-prototype .ruc-update-card{border:1px solid var(--ruc-line);border-radius:12px;padding:18px 20px;margin:14px 0 24px}
+#ruc-prototype .ruc-update-card>strong{font-size:14px}
+#ruc-prototype .ruc-update-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+#ruc-prototype .ruc-update-actions:has(>button:not([hidden])){min-height:34px}
+#ruc-prototype .ruc-update-notes{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.8;color:var(--ruc-muted);max-height:280px;overflow:auto;margin:10px 0}
+#ruc-prototype .ruc-update-card summary{cursor:pointer;font-size:13px;margin-top:12px}
+#ruc-prototype .ruc-update-card progress{width:100%;height:8px;margin-top:16px;accent-color:var(--ruc-green)}
+#ruc-prototype .ruc-update-banner{display:block;width:100%;border:1px solid var(--ruc-line);border-radius:10px;padding:12px 16px;background:var(--ruc-soft);color:var(--ruc-text);text-align:left;cursor:pointer;margin-bottom:20px;font:inherit;font-size:13px}
+#ruc-prototype .ruc-update-banner[hidden]{display:none}
+#ruc-prototype .ruc-update-confirm{border-top:1px solid var(--ruc-line);margin-top:16px;padding-top:12px;font-size:13px;line-height:1.8}
