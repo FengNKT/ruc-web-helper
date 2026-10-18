@@ -121,7 +121,7 @@ export function setupAccounts(root,{state,call,render,toast,operate,changePage,r
   form.addEventListener('submit',async event=>{
     event.preventDefault();if(working||state.busy)return;
     working=true;state.busy=true;qa('.ruc-account-form button,.ruc-account-form input').forEach(b=>b.disabled=true);q('[data-account-error]').textContent='';render();
-    try{state.preferences=await call('save_account',{id:editing,name:form.elements.accountName.value,username:form.elements.username.value.trim(),password:form.elements.password.value});working=false;close(q('[data-account-dialog]'));toast('账号已安全保存，网络连接未更改。可手动登录或开启启动时自动登录。');}
+    try{state.preferences=await call('save_account',{id:editing,name:form.elements.accountName.value,username:form.elements.username.value.trim(),password:form.elements.password.value});working=false;close(q('[data-account-dialog]'));toast('账号已安全保存，网络连接未更改。可手动登录或开启自动登录校园网。');}
     catch(error){q('[data-account-error]').textContent=message(error);}
     finally{working=false;state.busy=false;form.elements.password.value='';qa('.ruc-account-form button,.ruc-account-form input').forEach(b=>b.disabled=false);render();}
     if(q('[data-account-dialog]').hidden)await refresh({silent:true});

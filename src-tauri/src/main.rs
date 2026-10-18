@@ -5,6 +5,7 @@ mod cleanup;
 mod credentials;
 mod device_names;
 mod portal;
+mod power;
 mod protocol;
 mod service;
 mod storage;
@@ -106,6 +107,7 @@ fn main() {
                     let _ = window.hide();
                 }
             }
+            app.manage(power::Observer::register()?);
             service::start_worker(app.handle().clone());
             update_install::acknowledge(&directory, &executable);
             updater::start_worker(app.handle().clone());

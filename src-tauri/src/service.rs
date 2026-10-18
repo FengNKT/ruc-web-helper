@@ -5,10 +5,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{
     path::{Path, PathBuf},
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Mutex,
-    },
+    sync::Mutex,
     time::{Duration, Instant},
 };
 use tauri::{Emitter, Manager, State};
@@ -156,7 +153,7 @@ pub struct Service {
     path: PathBuf,
     credential_path: PathBuf,
     device_names: crate::device_names::DeviceNames,
-    startup_pending: AtomicBool,
+    automatic: automatic::AutomaticLogin,
     blocked: Mutex<String>,
 }
 
@@ -190,17 +187,18 @@ impl Service {
             settings.onboarding_done = true;
         }
         configure_initial_startup(&path, &settings, enable_startup)?;
-        let startup_pending = AtomicBool::new(
-            settings.auto
-                && credentials::load_automatic(&credential_path).is_ok_and(|a| a.is_some()),
-        );
+        let automatic = automatic::AutomaticLogin::default();
+        if settings.auto && credentials::load_automatic(&credential_path).is_ok_and(|a| a.is_some())
+        {
+            automatic.begin(automatic::Trigger::Startup, Instant::now());
+        }
         let service = Self {
             portal: tokio::sync::Mutex::new(Portal::new()?),
             settings: Mutex::new(settings),
             path,
             credential_path,
             device_names: crate::device_names::DeviceNames::new(directory.join("devices.json")),
-            startup_pending,
+            automatic,
             blocked: Mutex::new(migration_error),
         };
         service.write(&service.settings())?;
@@ -208,6 +206,10 @@ impl Service {
     }
     pub(crate) fn settings(&self) -> Settings {
         self.settings.lock().unwrap().clone()
+    }
+    fn cancel_automatic(&self) {
+        crate::power::EVENTS.take();
+        self.automatic.cancel();
     }
     fn record_login_result(
         &self,
@@ -306,7 +308,7 @@ pub async fn clear_all_data(
     updater: State<'_, crate::updater::Updater>,
 ) -> Result<(), String> {
     updater.begin_data_clear()?;
-    state.startup_pending.store(false, Ordering::SeqCst);
+    state.cancel_automatic();
     let _guard = state.portal.lock().await;
     let result = (|| {
         let enabled = app
@@ -368,7 +370,7 @@ pub async fn set_preferences(
         return Err(error);
     }
     if !settings.auto {
-        state.startup_pending.store(false, Ordering::SeqCst);
+        state.cancel_automatic();
     }
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.set_theme(settings.theme.native());
@@ -385,7 +387,7 @@ pub async fn save_account(
     id: Option<String>,
     name: String,
 ) -> Result<Preferences, String> {
-    state.startup_pending.store(false, Ordering::SeqCst);
+    state.cancel_automatic();
     let _guard = state.portal.lock().await;
     credentials::upsert(&state.credential_path, id, name, username, password)?;
     state.blocked.lock().unwrap().clear();
@@ -409,7 +411,7 @@ pub async fn forget_account(
     state: State<'_, Service>,
     id: String,
 ) -> Result<Preferences, String> {
-    state.startup_pending.store(false, Ordering::SeqCst);
+    state.cancel_automatic();
     let _guard = state.portal.lock().await;
     credentials::remove(&state.credential_path, &id)?;
     state.blocked.lock().unwrap().clear();
@@ -426,7 +428,7 @@ pub async fn reset_accounts(
     app: tauri::AppHandle,
     state: State<'_, Service>,
 ) -> Result<Preferences, String> {
-    state.startup_pending.store(false, Ordering::SeqCst);
+    state.cancel_automatic();
     let _guard = state.portal.lock().await;
     credentials::reset_with_backup(&state.credential_path)?;
     state.blocked.lock().unwrap().clear();
@@ -435,7 +437,7 @@ pub async fn reset_accounts(
 
 #[tauri::command]
 pub async fn connect_network(state: State<'_, Service>) -> Result<Snapshot, String> {
-    state.startup_pending.store(false, Ordering::SeqCst);
+    state.cancel_automatic();
     state.blocked.lock().unwrap().clear();
     let mut portal = state.portal.lock().await;
     let account =
@@ -448,15 +450,15 @@ pub async fn connect_network(state: State<'_, Service>) -> Result<Snapshot, Stri
 
 #[tauri::command]
 pub async fn disconnect_network(state: State<'_, Service>) -> Result<Snapshot, String> {
-    // Cancel pending startup retries before waiting for an in-flight login.
-    state.startup_pending.store(false, Ordering::SeqCst);
+    // Cancel automatic retries before waiting for an in-flight login.
+    state.cancel_automatic();
     state.blocked.lock().unwrap().clear();
     Ok(state.name_snapshot(state.portal.lock().await.logout().await?))
 }
 
 #[tauri::command]
 pub async fn switch_account(state: State<'_, Service>, id: String) -> Result<Snapshot, String> {
-    state.startup_pending.store(false, Ordering::SeqCst);
+    state.cancel_automatic();
     let mut portal = state.portal.lock().await;
     let account = credentials::select(&state.credential_path, &id)?;
     state.blocked.lock().unwrap().clear();
@@ -574,5 +576,6 @@ fn report(app: &tauri::AppHandle, message: &str) {
         .show();
 }
 
+mod automatic;
 mod worker;
 pub use worker::start_worker;

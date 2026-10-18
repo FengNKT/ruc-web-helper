@@ -1,6 +1,6 @@
 [package]
 name = "ruc-web-helper"
-version = "1.2.0"
+version = "1.2.1"
 edition = "2021"
 description = "RUC Web Helper"
 license = "AGPL-3.0-only"
@@ -32,7 +32,7 @@ zeroize = { version = "1", features = ["derive"] }
 keyring = { version = "3.6.3", features = ["windows-native"] }
 
 windows-registry = "0.6.1"
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_Networking_WinHttp", "Win32_System_Threading", "Win32_Storage_FileSystem"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_Networking_WinHttp", "Win32_System_Threading", "Win32_Storage_FileSystem", "Win32_System_Power", "Win32_UI_WindowsAndMessaging"] }
 
 [profile.release]
 codegen-units = 1
