@@ -3319,10 +3319,11 @@ dependencies = [
 
 [[package]]
 name = "ruc-web-helper"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",
+ "dirs 7.0.0",
  "ed25519-dalek",
  "hmac",
  "keyring",

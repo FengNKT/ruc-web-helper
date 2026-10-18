@@ -18,10 +18,25 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
     await page.addInitScript(version=>{
       window.isTauri=true;window.__calls=[];
       const update={preferences:{automatic:true,network:'system'},status:'idle',message:'尚未检查更新',release:null,checked:0,downloaded:0,skipped:false};
-      const preferences={settings:{startup:false,auto:false,wake:true,notice:true},username:'',hasCredentials:false,paused:false,automaticError:''};
+      const preferences={settings:{startup:true,auto:true,notice:true,onboarding_done:true},username:'',accounts:[],selectedId:null,automaticId:null,hasCredentials:false,credentialError:'',automaticError:''};
+      let nextAccount=1;
+      const syncAccount=()=>{const saved=preferences.accounts.find(a=>a.id===preferences.selectedId);preferences.username=saved?.username||'';preferences.hasCredentials=Boolean(saved);};
+      window.__fixturePreferences=preferences;
+      const scenario=new URL(location.href).searchParams.get('scenario');
+      if(scenario==='first')preferences.settings.onboarding_done=false;
+      if(scenario==='corrupt')preferences.credentialError='账号文件损坏，请重新保存账号';
       const deviceNames={};
       const snapshot={authenticated:true,username:'test-student',ip:'10.0.0.2',status:'E0000',message:'已登录校园网',usedBytes:1000000000,remainBytes:9000000000,packageRemainBytes:9000000000,balance:12.34,checkoutDate:null,warnings:[],devices:[{id:1,name:'Test laptop',os:'Windows',ip:'10.0.0.2',online:1,current:true},{id:2,name:'<img src=x onerror=alert(1)>',os:'iOS',ip:'10.0.0.3',online:'1',current:false}]};
+      window.__fixtureSnapshot=snapshot;
+      if(scenario==='registered-online'){
+        preferences.accounts=[{id:'account-1',name:'主账号',username:'saved-a'},{id:'account-2',name:'备用账号',username:'saved-b'}];
+        preferences.selectedId='account-1';preferences.automaticId='account-1';nextAccount=3;syncAccount();
+        snapshot.username='saved-b';
+      }
+      if(scenario==='unconfigured-offline')Object.assign(snapshot,{authenticated:false,username:'',status:'offline',message:'尚未登录校园网'});
       snapshot.devices[0].mac='aa:bb:cc:dd:ee:ff';snapshot.devices[1].mac='11:22:33:44:55:66';
+      snapshot.devices[0].since=1791693600;snapshot.devices[0].lastRecord=1791690000;
+      snapshot.devices[1].since=1791693600;
       window.__TAURI_INTERNALS__={transformCallback:()=>1,unregisterCallback:()=>{},invoke:async(cmd,args)=>{
         window.__calls.push(cmd);
         if(cmd.startsWith('plugin:event|'))return 1;
@@ -38,19 +53,37 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
         if(cmd==='open_update_release')return null;
         if(cmd==='install_update'){update.status='installing';return structuredClone(update);}
         if(cmd==='get_preferences')return structuredClone(preferences);
-        if(cmd==='get_snapshot'){if(window.__fail)throw '网络请求超时';await new Promise(r=>setTimeout(r,500));return structuredClone(snapshot);}
+        if(cmd==='open_privacy_feedback')return null;
+        if(cmd==='clear_all_data'){if(window.__clearFail)throw '无法启动数据清除任务';await new Promise(r=>setTimeout(r,200));return null;}
+        if(cmd==='get_snapshot'){
+          if(window.__fail)throw '网络请求超时';await new Promise(r=>setTimeout(r,500));
+          const observed=snapshot.authenticated&&preferences.accounts.find(a=>a.username===snapshot.username);
+          if(observed){preferences.selectedId=observed.id;syncAccount();}
+          return structuredClone(snapshot);
+        }
         if(cmd==='set_device_ignored'){
           if(window.__ignoreFail)throw '设备档案保存失败';
           const key=args.mac.replace(/[:-]/g,'').toLowerCase();
           snapshot.devices.find(d=>d.mac.replace(/[:-]/g,'').toLowerCase()===key).ignored=args.ignored;
           return structuredClone(snapshot);
         }
-        if(cmd==='disconnect_network'){snapshot.authenticated=false;preferences.paused=true;return structuredClone(snapshot);}
-        if(cmd==='connect_network'){snapshot.authenticated=true;preferences.paused=false;return structuredClone(snapshot);}
+        if(cmd==='disconnect_network'){snapshot.authenticated=false;snapshot.username='';return structuredClone(snapshot);}
+        if(cmd==='connect_network'){snapshot.authenticated=true;snapshot.username=preferences.username;return structuredClone(snapshot);}
+        if(cmd==='switch_account'){preferences.selectedId=args.id;syncAccount();snapshot.authenticated=false;snapshot.username='';const target=preferences.accounts.find(a=>a.id===args.id);if(window.__switchFail){target.passwordError=true;throw '数智人大密码错误，请在设置中修改该账号的密码后重试';}target.passwordError=false;snapshot.username=preferences.username;snapshot.authenticated=true;return structuredClone(snapshot);}
         if(cmd==='drop_device'){snapshot.devices[1].online=false;return structuredClone(snapshot);}
         if(cmd==='set_preferences'){if(window.__themeFail)throw '无法保存设置';preferences.settings=args.settings;return structuredClone(preferences);}
-        if(cmd==='save_account'){if(window.__saveFail)throw '账号保存失败';window.__lastAccountSave={username:args.username,hasNewPassword:args.password.length>0};preferences.username=args.username;preferences.hasCredentials=true;return structuredClone(preferences);}
-        if(cmd==='forget_account'){preferences.username='';preferences.hasCredentials=false;preferences.settings.auto=false;return structuredClone(preferences);}
+        if(cmd==='save_account'){
+          if(window.__saveFail)throw '账号保存失败';
+          if(preferences.accounts.some(a=>a.username===args.username&&a.id!==args.id))throw '该学工号已保存，请编辑现有账号';
+          window.__lastAccountSave={username:args.username,hasNewPassword:args.password.length>0};
+          let saved=preferences.accounts.find(a=>a.id===args.id);
+          if(saved){saved.name=args.name||args.username;saved.username=args.username;if(args.password)saved.passwordError=false;}
+          else {saved={id:'account-'+nextAccount++,name:args.name||args.username,username:args.username};preferences.accounts.push(saved);if(preferences.accounts.length===1){preferences.selectedId=saved.id;preferences.automaticId=saved.id;}}
+          syncAccount();return structuredClone(preferences);
+        }
+        if(cmd==='set_automatic_account'){if(window.__automaticAccountFail)throw '无法保存默认账号';preferences.automaticId=args.id;return structuredClone(preferences);}
+        if(cmd==='forget_account'){preferences.accounts=preferences.accounts.filter(a=>a.id!==args.id);if(preferences.selectedId===args.id)preferences.selectedId=null;if(preferences.automaticId===args.id)preferences.automaticId=preferences.accounts[0]?.id||null;syncAccount();return structuredClone(preferences);}
+        if(cmd==='reset_accounts'){preferences.accounts=[];preferences.selectedId=null;preferences.automaticId=null;preferences.credentialError='';syncAccount();return structuredClone(preferences);}
         if(cmd==='get_records')return {items:[{add_time:1791690000,user_ip:'10.0.0.2',time_long:3665,total_bytes:1000000000}],total:1};
         if(cmd==='set_device_name'){
           const key=args.mac.replace(/[:-]/g,'').toLowerCase();if(args.name.trim())deviceNames[key]=args.name.trim();else delete deviceNames[key];
@@ -111,12 +144,19 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
     await page.locator('[data-update-confirm-install]').click();
     await page.waitForFunction(()=>window.__calls.includes('install_update'));
     await page.locator('[data-panel="settings"]').evaluate(e=>e.closest('.ruc-main').scrollTop=0);
+    assert.equal(await page.locator('[data-setting="startup"]').isChecked(),true,'Startup is enabled by default');
     const automatic=page.locator('[data-setting="auto"]');
-    assert.equal(await automatic.isDisabled(),true,'Online account does not count as saved credentials');
-    assert.equal(await automatic.isChecked(),false);
-    await page.waitForFunction(()=>document.querySelector('[data-profile-account]').textContent==='test-student');
-    assert.equal(await page.locator('[data-profile-account]').textContent(),'test-student');
-    assert.ok((await page.locator('[data-auto-description]').textContent()).includes('保存账号和密码'));
+    assert.equal(await automatic.isDisabled(),false,'Automatic login remains configurable without credentials');
+    assert.equal(await automatic.isChecked(),true);
+    assert.equal(await page.locator('[data-account]').textContent(),'添加账号');
+    assert.equal(await page.locator('[data-account-label]').textContent(),'添加校园账号后，才能自动登录');
+    assert.equal(await page.locator('[data-automatic-account-row]').isVisible(),false);
+    await automatic.uncheck();await page.waitForFunction(()=>!document.querySelector('[data-setting="auto"]').disabled);
+    assert.equal(await automatic.isChecked(),false,'Can disable startup login without credentials');
+    await automatic.check();await page.waitForFunction(()=>!document.querySelector('[data-setting="auto"]').disabled);
+    await page.waitForFunction(()=>document.querySelector('[data-network-account]').textContent==='test-student');
+    assert.equal(await page.locator('[data-network-account]').textContent(),'test-student','Overview follows actual online identity even without saved credentials');
+    assert.equal(await page.locator('[data-auto-description]').count(),0);
     const theme=page.locator('[data-theme]');
     const background=()=>page.locator('#ruc-prototype').evaluate(e=>getComputedStyle(e).backgroundColor);
     const choose=async value=>{await theme.selectOption(value);await page.waitForFunction(()=>!document.querySelector('[data-theme]').disabled);};
@@ -133,33 +173,35 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
     };
     await page.evaluate(()=>window.__saveFail=true);await saveFixtureAccount();
     await page.waitForFunction(()=>document.querySelector('[data-account-error]').textContent==='账号保存失败');
-    assert.equal(await automatic.isDisabled(),true,'Failed save does not unlock automatic login');
+    assert.equal(await automatic.isDisabled(),false,'A failed credential save does not disable the independent switch');
     await page.locator('[data-account-cancel]').click();
     await page.evaluate(()=>window.__saveFail=false);await saveFixtureAccount();
     await page.waitForFunction(()=>!document.querySelector('[data-setting="auto"]').disabled);
-    assert.equal(await automatic.isChecked(),false,'Saving credentials does not enable automatic login');
-    assert.equal(await page.locator('[data-profile-account]').textContent(),'test-student');
-    assert.equal(await page.locator('[data-account-label]').textContent(),'test-student · 密码已加密保存在本地');
-    for(const setting of ['startup','auto','wake','notice']){
+    assert.equal(await automatic.isChecked(),true,'Saving credentials preserves the automatic login preference');
+    assert.equal(await page.locator('[data-network-account]').textContent(),'test-student');
+    assert.equal(await page.locator('[data-account-label]').textContent(),'1 个已保存账号 · 密码加密保存在本机');
+    for(const setting of ['startup','auto','notice']){
       const control=page.locator(`[data-setting="${setting}"]`),row=control.locator('..');
       const before=await control.isChecked();
-      await row.locator('strong').click();await row.locator('small').click();
+      await row.locator('strong').click();if(await row.locator('small').count())await row.locator('small').click();
       assert.equal(await control.isChecked(),before,'Setting text must not toggle '+setting);
     }
     await automatic.check();await page.waitForFunction(()=>!document.querySelector('[data-theme]').disabled);
     assert.equal(await automatic.isChecked(),true);
-    await page.locator('[data-account]').click();await page.locator('[data-forget]').click();
-    await page.waitForFunction(()=>document.querySelector('[data-account-dialog]').hidden);
-    assert.equal(await automatic.isDisabled(),true);assert.equal(await automatic.isChecked(),false);
+    await page.locator('[data-edit-account]').click();await page.locator('[data-forget]').click();
+    await page.locator('[data-account-confirm-submit]').click();
+    await page.waitForFunction(()=>document.querySelector('[data-account-confirm]').hidden);
+    assert.equal(await automatic.isDisabled(),false);assert.equal(await automatic.isChecked(),true);
+    assert.equal(await page.locator('[data-automatic-account-row]').isVisible(),false,'Deleting the last account hides the account picker without disabling startup login');
     await saveFixtureAccount();await page.waitForFunction(()=>!document.querySelector('[data-setting="auto"]').disabled);
     await choose('dark');assert.equal(await background(),'rgb(24, 27, 32)');
     assert.equal(await page.evaluate(()=>localStorage.getItem('ruc-theme')),'dark');
-    await page.locator('[data-account]').click();
+    await page.locator('[data-edit-account]').click();
     assert.equal(await page.locator('.ruc-account-form').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(24, 27, 32)');
     const password=page.locator('input[name="password"]');
     assert.equal(await password.inputValue(),'');
-    assert.equal(await password.getAttribute('placeholder'),'已配置密码（留空保留）');
-    assert.ok((await page.locator('[data-password-hint]').textContent()).includes('覆盖原密码'));
+    assert.equal(await password.getAttribute('placeholder'),'••••••');
+    assert.equal(await page.locator('[data-password-hint]').count(),0);
     assert.equal(await password.evaluate(e=>e.required),false);
     await page.locator('input[name="username"]').fill('other-student');
     assert.equal(await password.evaluate(e=>e.required),true);
@@ -168,7 +210,22 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
     await page.locator('.ruc-account-form button[type="submit"]').click();
     await page.waitForFunction(()=>document.querySelector('[data-account-dialog]').hidden);
     assert.deepEqual(await page.evaluate(()=>window.__lastAccountSave),{username:'test-student',hasNewPassword:false});
-    await page.locator('[data-account]').click();await password.fill('fictional-replacement');
+    await page.locator('[data-edit-account]').click();
+    const savesBeforeCancel=await page.evaluate(()=>window.__calls.filter(c=>c==='save_account').length);
+    await password.click();
+    assert.equal(await password.inputValue(),'');
+    assert.equal(await password.getAttribute('placeholder'),'');
+    assert.equal(await password.evaluate(e=>e.required),true);
+    await page.locator('.ruc-account-form button[type="submit"]').click();
+    assert.equal(await page.locator('[data-account-dialog]').isVisible(),true,'An edited password cannot be saved empty');
+    await password.fill('fictional-cancelled-password');
+    await page.locator('[data-account-cancel]').click();
+    assert.equal(await page.evaluate(()=>window.__calls.filter(c=>c==='save_account').length),savesBeforeCancel,'Cancel never submits a password change');
+    await page.locator('[data-edit-account]').click();
+    assert.equal(await password.getAttribute('placeholder'),'••••••','Reopening restores the six-dot mask');
+    await password.click();await password.fill('fictional-replacement');
+    await page.locator('input[name="accountName"]').click();await password.click();
+    assert.equal(await password.inputValue(),'fictional-replacement','Refocusing preserves newly entered password');
     await page.locator('.ruc-account-form button[type="submit"]').click();
     await page.waitForFunction(()=>document.querySelector('[data-account-dialog]').hidden);
     assert.deepEqual(await page.evaluate(()=>window.__lastAccountSave),{username:'test-student',hasNewPassword:true});
@@ -184,6 +241,21 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
     await page.locator('[data-page="devices"]').click();
     await page.waitForFunction(()=>document.querySelector('[data-all-devices]').textContent.includes('Test laptop'));
     assert.equal(await page.locator('[data-all-devices] .ruc-device-preview').count(),2);
+    const firstDevice=page.locator('[data-all-devices] .ruc-device-preview').first();
+    assert.deepEqual(await firstDevice.locator('.ruc-device-detail-label').allTextContents(),['IP','MAC'],'Online devices do not show a previous-session time');
+    assert.deepEqual(await firstDevice.locator('.ruc-device-detail-value').allTextContents(),['10.0.0.2','AA:BB:CC:DD:EE:FF']);
+    await page.evaluate(()=>window.__fixtureSnapshot.devices.forEach(d=>{d.online=false;d.deviceStatus='offline';}));
+    await page.locator('[data-panel="devices"] [data-refresh]').click();
+    await page.waitForFunction(()=>document.querySelectorAll('[data-all-devices] .ruc-device-preview:first-child .ruc-device-detail').length===3);
+    assert.deepEqual(await firstDevice.locator('.ruc-device-detail-label').allTextContents(),['IP','MAC','上次在线']);
+    const lastClosed=await page.evaluate(()=>new Date(1791690000*1000).toLocaleString('zh-CN',{hour12:false}));
+    assert.equal(await firstDevice.locator('.ruc-device-detail-value').last().textContent(),lastClosed,'Last online is the closed-session timestamp, not the current session start');
+    assert.equal(await page.locator('[data-all-devices] .ruc-device-preview').nth(1).locator('.ruc-device-detail-value').last().textContent(),'暂无记录','Missing closed sessions must not fall back to connection start');
+    await page.screenshot({path:artifact('device-details-offline.png','e2e')});
+    await page.evaluate(()=>window.__fixtureSnapshot.devices.forEach(d=>{d.online=true;delete d.deviceStatus;}));
+    await page.locator('[data-panel="devices"] [data-refresh]').click();
+    await page.waitForFunction(()=>document.querySelectorAll('[data-all-devices] .ruc-device-preview:first-child .ruc-device-detail').length===2);
+    await page.screenshot({path:artifact('device-details-online.png','e2e')});
     assert.equal(await page.locator('[data-device-month],[data-device-sync],[data-device-coverage]').count(),0);
     assert.equal(await page.evaluate(()=>window.__calls.includes('get_traffic_data')),false);
     await page.locator('[data-page="records"]').click();
@@ -409,6 +481,223 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
     await page.locator('[data-page="devices"]').click();
     assert.equal(await page.locator('[data-all-devices] .ruc-device-preview').count(),4);
     assert.ok((await page.locator('[data-all-devices]').textContent()).includes('状态未更新'));
-    assert.deepEqual(errors,[]);console.log('PASS: real command wiring, safe text rendering, destructive-action confirmation, offline clearing and responsive layouts');
+    // New account flows run against a fresh fictional backend, never a real school session.
+    await page.setViewportSize({width:1040,height:820});
+    await page.goto(`http://127.0.0.1:${server.address().port}/?scenario=first`);
+    await page.locator('[data-onboarding]').waitFor({state:'visible'});
+    await page.locator('[data-onboarding-skip]').click();
+    await page.locator('[data-onboarding]').waitFor({state:'hidden'});
+    assert.equal(await page.evaluate(()=>window.__fixturePreferences.settings.onboarding_done),true);
+    await page.waitForFunction(()=>document.querySelector('[data-network-account]').textContent==='test-student');
+    assert.equal(await page.locator('[data-network-account]').textContent(),'test-student');
+    assert.ok((await page.locator('[data-account-notice]').textContent()).includes('尚未配置账号'));
+    assert.equal(await page.locator('.ruc-account-overview').count(),0,'Account and network state share one control');
+    assert.equal(await page.locator('[data-panel="overview"] [data-account-settings]').count(),1);
+    assert.equal(await page.locator('[data-panel="overview"] [data-account-notice] button').count(),0);
+    await page.locator('[data-account-settings]').click();
+    assert.equal(await page.locator('[name="username"]').inputValue(),'test-student','Recording pre-fills only the observed username');
+    assert.equal(await page.locator('[name="password"]').inputValue(),'');
+    assert.equal(await page.locator('[name="password"]').evaluate(e=>e.required),true);
+    await page.locator('[data-account-cancel]').click();
+    await page.locator('[data-page="settings"]').click();
+    assert.equal(await page.locator('[data-panel="settings"]').isVisible(),true);
+    assert.equal(await page.locator('.ruc-dialog-layer:not([hidden])').count(),0,'Settings navigation opens account management directly');
+    assert.equal(await page.locator('[data-panel="settings"] .ruc-heading + section').getAttribute('aria-labelledby'),'ruc-accounts-title');
+    await saveFixtureAccount();
+    await page.locator('[data-account-dialog]').waitFor({state:'hidden'});
+    await page.locator('[data-account]').click();
+    await page.locator('[name="accountName"]').fill('<img src=x onerror=alert(1)>');
+    await page.locator('[name="username"]').fill('other-student');
+    await page.locator('[name="password"]').fill('fictional-other-password');
+    await page.locator('.ruc-account-form button[type="submit"]').click();
+    await page.locator('[data-account-dialog]').waitFor({state:'hidden'});
+    assert.equal(await page.locator('[data-account-list] .ruc-account-row').count(),2);
+    assert.equal(await page.locator('[data-account-list] img').count(),0);
+    assert.equal(await page.evaluate(()=>window.__fixtureSnapshot.username),'test-student','Saving B does not replace A');
+    assert.equal(await page.evaluate(()=>window.__fixturePreferences.username),'test-student','Adding B does not select B');
+    const selectedId=await page.evaluate(()=>window.__fixturePreferences.selectedId);
+    const otherId=await page.evaluate(()=>window.__fixturePreferences.accounts.find(a=>a.username==='other-student').id);
+    const defaultAccount=page.locator('[data-automatic-account]');
+    assert.equal(await defaultAccount.inputValue(),selectedId);
+    await defaultAccount.selectOption(otherId);
+    await page.waitForFunction(()=>!document.querySelector('[data-automatic-account]').disabled);
+    assert.equal(await defaultAccount.inputValue(),otherId);
+    assert.equal(await page.evaluate(()=>window.__fixtureSnapshot.username),'test-student','Choosing a startup account does not authenticate');
+    assert.equal(await page.evaluate(()=>window.__fixturePreferences.selectedId),selectedId,'Startup account selection is independent');
+    await page.evaluate(()=>window.__automaticAccountFail=true);
+    await defaultAccount.selectOption(selectedId);
+    await page.waitForFunction(()=>!document.querySelector('[data-automatic-account]').disabled);
+    assert.equal(await defaultAccount.inputValue(),otherId,'A failed save restores the previous default');
+    await page.evaluate(()=>window.__automaticAccountFail=false);
+    await page.locator(`[data-switch-account="${otherId}"]`).click();
+    await page.locator('[data-account-confirm-cancel]').click();
+    assert.equal(await page.evaluate(()=>window.__calls.includes('switch_account')),false);
+    await page.evaluate(()=>window.__switchFail=true);
+    await page.locator(`[data-switch-account="${otherId}"]`).click();
+    await page.locator('[data-account-confirm-submit]').click();
+    await page.waitForFunction(()=>!document.querySelector('[data-account]').disabled);
+    assert.equal(await page.evaluate(()=>window.__fixturePreferences.username),'other-student');
+    assert.equal(await page.locator('[data-status-title]').textContent(),'尚未登录校园网','A successful logout followed by failed B authentication remains offline');
+    assert.equal(await page.locator('[data-account-caption]').textContent(),'待登录账号');
+    assert.equal(await page.locator('[data-network-account]').textContent(),'other-student');
+    assert.ok((await page.locator('.ruc-toast').textContent()).includes('数智人大密码错误'));
+    const rejected=page.locator(`[data-account-id="${otherId}"] .ruc-account-password-error`);
+    assert.equal(await rejected.textContent(),'数智人大密码错误');
+    await page.screenshot({path:artifact('account-password-error.png','e2e')});
+    assert.ok(['rgb(168, 50, 50)','rgb(255, 170, 170)'].includes(await rejected.evaluate(e=>getComputedStyle(e).color)));
+    assert.equal(await page.locator('[data-account-list]').textContent().then(t=>t.includes('密码已配置')),false);
+    assert.equal(await page.locator(`[data-account-id="${selectedId}"] .ruc-account-password-error`).count(),0,'The other account is unaffected');
+    await page.locator(`[data-edit-account="${otherId}"]`).click();
+    await page.locator('[name="accountName"]').fill('备用账号');
+    await page.locator('.ruc-account-form button[type="submit"]').click();
+    await page.locator('[data-account-dialog]').waitFor({state:'hidden'});
+    assert.equal(await rejected.count(),1,'Renaming alone preserves password rejection');
+    await page.locator(`[data-edit-account="${otherId}"]`).click();
+    await page.locator('[name="password"]').fill('fictional-corrected-password');
+    await page.locator('.ruc-account-form button[type="submit"]').click();
+    await page.locator('[data-account-dialog]').waitFor({state:'hidden'});
+    assert.equal(await rejected.count(),0,'Replacing the password clears its old rejection');
+    await page.evaluate(()=>window.__switchFail=false);
+    await page.locator(`[data-switch-account="${otherId}"]`).click();
+    await page.locator('[data-account-confirm-submit]').click();
+    await page.waitForFunction(()=>!document.querySelector('[data-account]').disabled);
+    assert.equal(await page.locator('[data-network-account]').textContent(),'other-student');
+    await page.locator(`[data-edit-account="${otherId}"]`).click();
+    assert.equal(await page.locator('[name="password"]').inputValue(),'');
+    await page.locator('[data-forget]').click();
+    await page.locator('[data-account-confirm-submit]').click();
+    await page.locator('[data-account-confirm]').waitFor({state:'hidden'});
+    assert.equal(await page.evaluate(()=>window.__fixtureSnapshot.username),'other-student','Deleting local credentials must not log out network');
+    assert.equal(await page.locator('[data-setting="auto"]').isDisabled(),false);
+    assert.equal(await defaultAccount.inputValue(),selectedId,'Deleting the default selects the first remaining account');
+    assert.equal(await page.locator('[data-setting="auto"]').isChecked(),true);
+    await page.locator(`[data-switch-account="${selectedId}"]`).click();
+    await page.locator('[data-account-confirm-submit]').click();
+    await page.waitForFunction(()=>!document.querySelector('[data-account]').disabled);
+    await page.locator('[data-page="overview"]').click();
+    await page.evaluate(()=>window.__fixtureSnapshot.username='external-student');
+    await page.locator('[data-refresh]').first().click();
+    await page.waitForFunction(()=>document.querySelector('[data-network-account]').textContent==='external-student');
+    assert.equal(await page.locator('[data-account-settings]').textContent(),'记录此账号');
+    assert.equal(await page.locator('[data-network-account]').textContent(),'external-student');
+    assert.equal(await page.locator('[data-account-notice] button').count(),0);
+    assert.equal(await page.evaluate(()=>window.__fixtureSnapshot.username),'external-student','Status observation must not replace externally authenticated identity');
+    const authenticationCount=await page.evaluate(()=>window.__calls.filter(c=>['connect_network','switch_account','disconnect_network'].includes(c)).length);
+    await page.locator('[data-account-settings]').click();
+    assert.equal(await page.locator('[name="username"]').inputValue(),'external-student');
+    await page.locator('[name="password"]').fill('fictional-recorded-password');
+    await page.locator('.ruc-account-form button[type="submit"]').click();
+    await page.waitForFunction(()=>window.__fixturePreferences.username==='external-student');
+    await page.locator('[data-account-notice]').waitFor({state:'hidden'});
+    assert.equal(await page.locator('[data-network-account]').textContent(),'external-student');
+    assert.equal(await page.evaluate(()=>window.__calls.filter(c=>['connect_network','switch_account','disconnect_network'].includes(c)).length),authenticationCount,'Recording does not re-authenticate');
+    for(const width of [1040,736,480,320]){
+      await page.setViewportSize({width,height:900});
+      assert.ok(await page.evaluate(()=>{const main=document.querySelector('.ruc-main');return main.scrollWidth<=main.clientWidth;}),'Account identity layout at '+width);
+      await page.locator('[data-page="settings"]').click();
+      assert.ok(await page.evaluate(()=>{const main=document.querySelector('.ruc-main');return main.scrollWidth<=main.clientWidth;}),'Account list layout at '+width);
+      await page.locator('[data-page="overview"]').click();
+    }
+    await page.setViewportSize({width:1040,height:820});
+    await page.goto(`http://127.0.0.1:${server.address().port}/?scenario=corrupt`);
+    await page.locator('[data-page="settings"]').click();
+    await page.locator('[data-account-recover]').waitFor({state:'visible'});
+    assert.equal(await page.locator('[data-account]').isDisabled(),true,'Corrupted store must not be overwritten by adding an account');
+    await page.locator('[data-account-recover]').click();
+    await page.locator('[data-account-confirm-submit]').click();
+    await page.waitForFunction(()=>!document.querySelector('[data-account]').disabled);
+    assert.equal(await page.locator('[data-credential-error]').isVisible(),false);
+    await page.goto(`http://127.0.0.1:${server.address().port}/?scenario=first`);
+    await page.locator('[data-onboarding-start]').click();
+    await page.locator('[data-account-dialog]').waitFor({state:'visible'});
+    assert.equal(await page.locator('[data-panel="settings"]').isVisible(),true);
+    await page.locator('[data-account-cancel]').click();
+    await page.locator('[data-page="settings"]').click();
+    assert.equal(await page.locator('[data-onboarding]').isVisible(),false);
+    await page.screenshot({path:artifact('v1.2.0-accounts-empty.png','e2e')});
+    await page.goto(`http://127.0.0.1:${server.address().port}/?scenario=registered-online`);
+    await page.waitForFunction(()=>window.__fixturePreferences.username==='saved-b');
+    assert.equal(await page.evaluate(()=>window.__fixturePreferences.automaticId),'account-1','Observing another account preserves the startup default');
+    assert.equal(await page.locator('[data-network-account]').textContent(),'saved-b','Initial status query selects the registered online account');
+    assert.equal(await page.locator('[data-account-notice]').isVisible(),false);
+    assert.equal(await page.locator('[data-selected-account]').count(),0,'Only one current identity is shown');
+    assert.equal(await page.evaluate(()=>window.__calls.some(c=>['connect_network','switch_account','disconnect_network'].includes(c))),false);
+    await page.evaluate(()=>window.__fixtureSnapshot.username='saved-a');
+    await page.locator('[data-refresh]').first().click();
+    await page.waitForFunction(()=>window.__fixturePreferences.username==='saved-a');
+    assert.equal(await page.locator('[data-network-account]').textContent(),'saved-a','Refresh follows externally changed registered identity');
+    assert.equal(await page.locator('[data-account-notice]').isVisible(),false);
+    assert.equal(await page.evaluate(()=>window.__calls.some(c=>['connect_network','switch_account','disconnect_network'].includes(c))),false,'Alignment never submits authentication');
+    await page.evaluate(()=>window.__fail=true);
+    await page.locator('[data-refresh]').first().click();
+    await page.waitForFunction(()=>document.querySelector('[data-network-account]').textContent==='暂时无法确认');
+    assert.equal(await page.evaluate(()=>window.__fixturePreferences.username),'saved-a','A failed query does not change the remembered login account');
+    await page.goto(`http://127.0.0.1:${server.address().port}/?scenario=unconfigured-offline`);
+    await page.waitForFunction(()=>document.querySelector('[data-network-account]').textContent==='未登录');
+    assert.ok((await page.locator('[data-account-notice]').textContent()).includes('尚未配置账号'));
+    assert.equal(await page.locator('[data-connect]').first().isVisible(),false);
+    await page.locator('[data-account-settings]').click();
+    assert.equal(await page.locator('[name="username"]').inputValue(),'');
+    await page.locator('[data-account-cancel]').click();
+    await page.locator('[data-page="settings"]').click();
+    const privacy=page.locator('[data-privacy-dialog]');
+    const privacySource=fs.readFileSync(path.resolve(__dirname,'../../docs/privacy.md'),'utf8');
+    const plain=text=>text.replace(/^#{1,6}\s+|^-\s+|^\d+\.\s+/g,'').replace(/`|\*\*/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').trim();
+    for(const theme of ['light','dark']){
+      await page.locator('[data-theme]').selectOption(theme);
+      await page.waitForFunction(()=>!document.querySelector('[data-theme]').disabled);
+      await page.locator('[data-privacy-open]').click();
+      assert.equal(await privacy.isVisible(),true);
+      assert.equal(await privacy.locator('article table').count(),2);
+      const displayed=await privacy.textContent();
+      for(const line of privacySource.split(/\r?\n/).map(s=>s.trim()).filter(Boolean)){
+        if(/^\|[\s:|\-]+$/.test(line))continue;
+        const parts=line.startsWith('|')?line.replace(/^\||\|$/g,'').split('|'):[line];
+        for(const part of parts)assert.ok(displayed.includes(plain(part)),'Full privacy text: '+plain(part).slice(0,50));
+      }
+      assert.equal(await privacy.locator('script,img').count(),0);
+      for(const width of [1040,480,320]){
+        await page.setViewportSize({width,height:820});
+        assert.ok(await privacy.evaluate(layer=>layer.scrollWidth<=layer.clientWidth),'Privacy layer fits '+width);
+        assert.ok(await privacy.locator('article').evaluate(e=>e.scrollWidth<=e.clientWidth),'Privacy document fits '+width);
+        assert.ok(await privacy.locator('article').evaluate(e=>e.scrollHeight>e.clientHeight),'Privacy document scrolls');
+      }
+      await page.setViewportSize({width:1040,height:820});
+      await page.screenshot({path:artifact('privacy-'+theme+'.png','e2e')});
+      await privacy.locator('a').click();
+      assert.equal(await page.evaluate(()=>window.__calls.includes('open_privacy_feedback')),true);
+      await page.keyboard.press('Tab');
+      assert.equal(await page.locator('[data-privacy-close]').evaluate(e=>e===document.activeElement),true,'Tab wraps within the reader');
+      await page.keyboard.press('Escape');
+      assert.equal(await privacy.isVisible(),false);
+      assert.equal(await page.locator('[data-privacy-open]').evaluate(e=>e===document.activeElement),true,'Close restores focus to settings');
+    }
+    await page.locator('[data-privacy-open]').click();
+    assert.equal(await privacy.locator('article').evaluate(e=>e.scrollTop),0,'Reopening starts at the top');
+    await page.locator('[data-privacy-close]').click();
+    assert.equal(await privacy.isVisible(),false);
+    const clearing=page.locator('[data-clear-dialog]');
+    await page.locator('[data-clear-data]').click();
+    assert.equal(await clearing.isVisible(),true);
+    await page.screenshot({path:artifact('clear-data-confirm.png','e2e')});
+    await page.setViewportSize({width:320,height:640});
+    assert.ok(await clearing.evaluate(e=>e.scrollWidth<=e.clientWidth),'Clear confirmation fits narrow windows');
+    assert.equal(await page.evaluate(()=>window.__calls.includes('clear_all_data')),false,'Opening confirmation never deletes data');
+    assert.equal(await page.locator('[data-clear-cancel]').evaluate(e=>e===document.activeElement),true);
+    await page.keyboard.press('Escape');
+    assert.equal(await clearing.isVisible(),false);
+    await page.setViewportSize({width:1040,height:820});
+    await page.locator('[data-clear-data]').click();await page.locator('[data-clear-cancel]').click();
+    assert.equal(await page.evaluate(()=>window.__calls.includes('clear_all_data')),false,'Cancel never submits deletion');
+    await page.locator('[data-clear-data]').click();await page.evaluate(()=>window.__clearFail=true);
+    await page.locator('[data-clear-confirm]').click();
+    await page.waitForFunction(()=>document.querySelector('[data-clear-error]').textContent==='无法启动数据清除任务');
+    assert.equal(await page.locator('[data-clear-cancel]').isDisabled(),false,'Failure keeps controls usable');
+    await page.evaluate(()=>window.__clearFail=false);
+    await page.locator('[data-clear-confirm]').evaluate(e=>{e.click();e.click();});
+    await page.waitForFunction(()=>window.__calls.filter(c=>c==='clear_all_data').length===2);
+    assert.equal(await page.locator('[data-clear-confirm]').isDisabled(),true);
+    await page.keyboard.press('Escape');assert.equal(await clearing.isVisible(),true,'Cannot dismiss a committed clear');
+    assert.deepEqual(errors,[]);console.log('PASS: existing flows, full privacy reader and confirmed data-clear UI (mock backend only)');
   }finally{if(browser)await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

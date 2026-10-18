@@ -11,6 +11,8 @@ npm run desktop:dev
 
 `npm run dev` 仅运行网页预览，无法直接访问桌面接口。`npm run desktop:build` 构建便携 EXE，不生成安装包。
 
+本地验证统一使用 `交付/人大校园网助手.exe`，不要为每次调整另建程序目录。构建后执行 `powershell -ExecutionPolicy Bypass -File scripts/deploy-local.ps1`，自动退出本项目的旧助手、替换固定位置的 EXE、校验并打开新版。账号、设置、设备档案和缓存统一保存在 `%LOCALAPPDATA%\cn.ruc.webhelper`，旧目录首次启动自动复制迁移；此操作不发布软件。历史临时目录中的用户数据保存在 `.local/retired-delivery-data/`。
+
 前端为 Vite + JavaScript，入口是 `index.html` 和 `src/main.js`。Rust 后端位于 `src-tauri/src/`，负责 HTTPS 接口、DPAPI 凭据、设备档案及桌面集成。`src-tauri/gen/schemas/` 由 Tauri 生成，不提交。
 
 保留 `package-lock.json` 和 `src-tauri/Cargo.lock`，不要将依赖目录或构建缓存提交到仓库。运行 `npm run version:set -- 1.0.1` 可同步全部版本字段，`npm run version:check` 可验证一致性。GitHub 构建与版本发布流程见 [发布指南](releasing.md)。
@@ -38,18 +40,18 @@ npm run test:rust
 | --- | --- |
 | `native-smoke.cjs` | 读取现有会话、设备与统计，可能更新本地发现档案；不改变连接、账号或设置 |
 | `registry-native.cjs` | 检查在线与历史设备合并，可能增量更新本地档案 |
-| `native-theme.cjs` | 临时更改本地主题并恢复，要求 `RUC_DELIVERY_DIR` 和 `RUC_ALLOW_LOCAL_TEST_MUTATIONS=1` |
+| `native-theme.cjs` | 临时更改本地主题并恢复，要求 `RUC_DATA_DIR` 和 `RUC_ALLOW_LOCAL_TEST_MUTATIONS=1` |
 | `device-names-native.cjs` | 临时修改本地设备名称并恢复，要求 `RUC_ALLOW_LOCAL_TEST_MUTATIONS=1` |
 | `login-cycle-native.cjs` | 会断开并重新登录本机校园网，要求明确授权及 `RUC_ALLOW_NETWORK_DISCONNECT=1` |
 
-`RUC_DELIVERY_DIR` 应指向待测程序及运行数据所在目录。手动检查截图写入 `test-results/manual/`，可能含账号、MAC、IP 或用量，不能作为公开文档图片。部分手动检查需要现有在线会话、已保存凭据或可用历史记录。
+`RUC_DATA_DIR` 应指向待测程序使用的用户数据目录。手动检查截图写入 `test-results/manual/`，可能含账号、MAC、IP 或用量，不能作为公开文档图片。部分手动检查需要现有在线会话、已保存凭据或可用历史记录。
 
 例如，只读检查可从项目根目录运行：
 
 ```powershell
-$env:RUC_DELIVERY_DIR = '待测程序目录的绝对路径'
+$env:RUC_DATA_DIR = Join-Path $env:LOCALAPPDATA 'cn.ruc.webhelper'
 node tests/manual/native-smoke.cjs
-Remove-Item Env:RUC_DELIVERY_DIR
+Remove-Item Env:RUC_DATA_DIR
 ```
 
 手动脚本中的显式开关仅用于防止误运行，不代表授权来源。日常开发使用虚构后端完成验证。

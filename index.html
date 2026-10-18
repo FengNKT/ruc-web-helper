@@ -7,16 +7,16 @@
         <button type="button" data-page="records" class="ruc-nav cursor-interaction"><i data-lucide="chart-no-axes-combined" aria-hidden="true"></i>统计</button>
         <button type="button" data-page="settings" class="ruc-nav cursor-interaction"><i data-lucide="settings-2" aria-hidden="true"></i>设置</button>
       </nav>
-      <div class="ruc-profile"><span class="ruc-avatar">我</span><div>校园账号<small data-profile-account>尚未保存账号</small></div><span class="ruc-profile-dot"></span></div>
     </aside>
     <main class="ruc-main">
       <section data-panel="overview">
         <header class="ruc-heading"><div><h1>网络概览</h1></div><button type="button" class="ruc-button ruc-icon-button cursor-interaction" data-refresh><i data-lucide="refresh-cw" aria-hidden="true"></i><span>刷新</span></button></header>
-        <div class="ruc-connection">
+        <section class="ruc-connection" aria-label="校园网连接与账号">
           <div class="ruc-status-icon"><i data-lucide="wifi" aria-hidden="true"></i></div>
-          <div class="ruc-status-copy"><div class="ruc-status-label"><h2 data-status-title>正在检查校园网</h2><span class="ruc-badge" data-online-badge>检查中</span></div><p data-status-detail>正在检查连接状态</p></div>
-          <button type="button" class="ruc-button cursor-interaction" data-connect>断开连接</button>
-        </div>
+          <div class="ruc-status-copy"><div class="ruc-status-label"><h2 data-status-title>正在检查校园网</h2><span class="ruc-badge" data-online-badge>检查中</span></div><p class="ruc-connection-account"><span data-account-caption>当前账号</span><strong data-network-account>正在检查</strong><span data-network-name hidden></span><span data-network-ip hidden></span></p><p data-status-detail hidden></p></div>
+          <div class="ruc-connection-actions"><button type="button" class="ruc-button cursor-interaction" data-connect>断开连接</button><button type="button" class="ruc-text-button cursor-interaction" data-account-settings>管理账号</button></div>
+          <p class="ruc-account-notice" data-account-notice role="status" hidden></p>
+        </section>
         <div class="ruc-section-label"><h2>流量与余额</h2><span data-billing-cycle>—</span></div>
         <div class="ruc-usage">
           <div class="ruc-flow"><div class="ruc-eyebrow">剩余可用流量</div><div class="ruc-big-number" data-remain>—</div>
@@ -28,7 +28,6 @@
         </div>
         <div class="ruc-section-label"><h2>在线设备 <span class="ruc-inline-count" data-device-number>—</span></h2><button type="button" class="ruc-text-button cursor-interaction" data-goto="devices">管理设备 <i data-lucide="arrow-right" aria-hidden="true"></i></button></div>
         <div data-overview-devices><p class="ruc-faint-note">正在读取在线设备…</p></div>
-        <div class="ruc-auto-note"><i data-lucide="zap" aria-hidden="true"></i><span data-auto-note>自动登录尚未开启</span><button type="button" class="ruc-text-button cursor-interaction" data-goto="settings">设置</button></div>
       </section>
       <section data-panel="devices" hidden>
         <header class="ruc-heading"><div><h1>我的设备</h1></div><div class="ruc-heading-actions"><button type="button" class="ruc-text-button" data-view-ignored>查看已忽略设备（0）</button><button type="button" class="ruc-button cursor-interaction" data-refresh><i data-lucide="refresh-cw" aria-hidden="true"></i>刷新</button></div></header>
@@ -80,21 +79,24 @@
       </section>
       <section data-panel="settings" hidden>
         <header class="ruc-heading"><div><h1>设置</h1></div></header>
+        <section class="ruc-accounts" aria-labelledby="ruc-accounts-title">
+          <div class="ruc-accounts-heading"><div><h2 id="ruc-accounts-title">校园账号</h2><p data-account-label>正在读取账号</p></div><button type="button" class="ruc-button ruc-primary" data-account disabled>添加账号</button></div>
+          <div data-account-list></div>
+          <label class="ruc-setting ruc-automatic-account" data-automatic-account-row hidden><strong>默认自动登录账号</strong><select data-automatic-account aria-label="默认自动登录账号"></select></label>
+          <p class="ruc-account-notice" data-credential-error role="alert" hidden></p>
+          <button type="button" class="ruc-button" data-account-recover hidden>备份并重新配置账号</button>
+        </section>
         <h2 class="ruc-settings-title">外观</h2>
-        <label class="ruc-setting ruc-theme-setting"><span><strong>主题模式</strong><small>跟随系统时随 Windows 外观自动切换</small></span><select data-theme aria-label="主题模式" disabled><option value="light">浅色</option><option value="dark">深色</option><option value="system" selected>跟随系统</option></select></label>
-        <h2 class="ruc-settings-title">自动连接</h2>
-        <div class="ruc-setting"><span><strong>开机自启</strong><small>在托盘中自动运行，不打开主窗口</small></span><input type="checkbox" role="switch" aria-label="开机自启" data-setting="startup"></div>
-        <div class="ruc-setting"><span><strong>自动登录校园网</strong><small id="auto-login-description" data-auto-description>请先在“管理账号”中保存账号和密码</small></span><input type="checkbox" role="switch" aria-label="自动登录校园网" data-setting="auto" aria-describedby="auto-login-description" disabled></div>
-        <div class="ruc-setting"><span><strong>休眠唤醒后恢复连接</strong><small>网络就绪后检查登录状态</small></span><input type="checkbox" role="switch" aria-label="休眠唤醒后恢复连接" data-setting="wake"></div>
-        <h2 class="ruc-settings-title">提醒与账号</h2>
+        <label class="ruc-setting ruc-theme-setting"><span><strong>主题模式</strong></span><select data-theme aria-label="主题模式" disabled><option value="light">浅色</option><option value="dark">深色</option><option value="system" selected>跟随系统</option></select></label>
+        <h2 class="ruc-settings-title">启动与登录</h2>
+        <div class="ruc-setting"><span><strong>开机自启</strong></span><input type="checkbox" role="switch" aria-label="开机自启" data-setting="startup"></div>
+        <div class="ruc-setting"><span><strong>启动时自动登录</strong></span><input type="checkbox" role="switch" aria-label="启动时自动登录" data-setting="auto" disabled></div>
+        <h2 class="ruc-settings-title">提醒</h2>
         <div class="ruc-setting"><span><strong>低流量提醒</strong><small>剩余可用流量低于 5 GB 时提醒</small></span><input type="checkbox" role="switch" aria-label="低流量提醒" data-setting="notice"></div>
-        <div class="ruc-setting"><span><strong>校园账号</strong><small><span data-account-label>尚未保存账号</span></small></span><button type="button" class="ruc-button cursor-interaction" data-account>管理账号</button></div>
         <h2 class="ruc-settings-title">软件更新</h2>
-        <div class="ruc-setting"><span><strong>当前版本 <span data-app-version>—</span></strong><small data-update-checked>尚未检查更新</small></span><button type="button" class="ruc-button" data-update-check>检查更新</button></div>
-        <div class="ruc-setting"><span><strong>自动检查更新</strong><small>有新版本时提醒，由你决定何时下载和更新</small></span><input type="checkbox" role="switch" aria-label="自动检查更新" data-update-automatic disabled></div>
-        <label class="ruc-setting ruc-theme-setting"><span><strong>更新网络</strong><small>仅用于软件更新；校园网登录和查询始终直连</small></span><select data-update-network aria-label="更新网络" disabled><option value="system">跟随系统代理</option><option value="direct">直接连接</option></select></label>
-        <div class="ruc-update-card" data-update-card aria-live="polite">
-          <strong data-update-status>正在读取更新设置…</strong>
+        <div class="ruc-update-row" data-update-card aria-live="polite">
+          <div class="ruc-setting ruc-update-heading"><span><strong>当前版本 <span data-app-version>—</span></strong><small><span data-update-status>正在读取更新设置…</span><span aria-hidden="true"> · </span><span data-update-checked>尚未检查更新</span></small></span><button type="button" class="ruc-button" data-update-check>检查更新</button></div>
+          <div class="ruc-update-details" data-update-details hidden>
           <p class="ruc-faint-note" data-update-info hidden></p>
           <progress data-update-progress aria-label="更新下载进度" max="100" value="0" hidden></progress>
           <p class="ruc-faint-note" data-update-progress-text hidden></p>
@@ -112,12 +114,21 @@
             <button type="button" class="ruc-button" data-update-later>稍后</button>
           </div>
         </div>
+        </div>
+        <div class="ruc-setting"><span><strong>自动检查更新</strong></span><input type="checkbox" role="switch" aria-label="自动检查更新" data-update-automatic disabled></div>
+        <label class="ruc-setting ruc-theme-setting"><span><strong>更新时是否使用代理</strong><small>更新时需要连接 Github，可能需要使用代理</small></span><select data-update-network aria-label="更新时是否使用代理" disabled><option value="system">跟随系统代理</option><option value="direct">直接连接</option></select></label>
+        <div class="ruc-setting"><strong>使用与隐私说明</strong><button type="button" class="ruc-button" data-privacy-open>查看</button></div>
+        <div class="ruc-setting"><strong>清除所有本地数据</strong><button type="button" class="ruc-button ruc-danger" data-clear-data>清除数据</button></div>
         <p class="ruc-faint-note">开源许可证 AGPL v3</p>
       </section>
     </main>
   </div>
-  <div class="ruc-dialog-layer" data-dialog hidden><div class="ruc-dialog" role="dialog" aria-modal="true" aria-labelledby="ruc-dialog-title"><div class="ruc-dialog-mark"><i data-lucide="unplug" aria-hidden="true"></i></div><h2 id="ruc-dialog-title">断开校园网？</h2><p data-dialog-copy>断开后将暂停自动登录，直到你再次点击连接。</p><div class="ruc-dialog-buttons"><button type="button" class="ruc-button cursor-interaction" data-cancel>取消</button><button type="button" class="ruc-button ruc-primary cursor-interaction" data-confirm>确认断开</button></div></div></div>
-<div class="ruc-dialog-layer" data-account-dialog hidden><form class="ruc-dialog ruc-account-form" role="dialog" aria-modal="true" aria-labelledby="account-title"><h2 id="account-title">校园账号</h2><p>填写数智人大账号。密码加密保存在程序目录。</p><label>学工号<input name="username" autocomplete="username" required maxlength="128"></label><label>密码<input name="password" type="password" autocomplete="new-password" placeholder="请输入密码" aria-describedby="account-password-hint" required maxlength="512"></label><p id="account-password-hint" data-password-hint>尚未配置密码，请输入密码后保存。</p><p class="ruc-form-error" role="alert" data-account-error></p><div class="ruc-dialog-buttons"><button type="button" class="ruc-text-button" data-forget>删除账号</button><button type="button" class="ruc-button" data-account-cancel>取消</button><button type="submit" class="ruc-button ruc-primary">保存账号</button></div></form></div>
+  <div class="ruc-dialog-layer" data-clear-dialog hidden><section class="ruc-dialog" role="dialog" aria-modal="true" aria-labelledby="clear-data-title"><h2 id="clear-data-title">清除所有本地数据？</h2><p>将永久删除当前用户的所有账号密码、设置、设备记录、凭据备份、缓存及更新文件，并关闭开机自启。软件随后退出，此操作无法撤销。</p><p>不会删除 EXE、旧版目录或自行备份的副本，也不会主动断开校园网或删除学校端记录。</p><p class="ruc-form-error" role="alert" data-clear-error></p><div class="ruc-dialog-buttons"><button type="button" class="ruc-button" data-clear-cancel>取消</button><button type="button" class="ruc-button ruc-danger" data-clear-confirm>清除并退出</button></div></section></div>
+  <div class="ruc-dialog-layer" data-privacy-dialog hidden><section class="ruc-dialog ruc-privacy-dialog" role="dialog" aria-modal="true" aria-labelledby="privacy-title"><header><h2 id="privacy-title">使用与隐私说明</h2><button type="button" class="ruc-button" data-privacy-close>关闭</button></header><article class="ruc-privacy-content" aria-label="使用与隐私说明正文" tabindex="0"></article></section></div>
+  <div class="ruc-dialog-layer" data-dialog hidden><div class="ruc-dialog" role="dialog" aria-modal="true" aria-labelledby="ruc-dialog-title"><div class="ruc-dialog-mark"><i data-lucide="unplug" aria-hidden="true"></i></div><h2 id="ruc-dialog-title">断开校园网？</h2><p data-dialog-copy>下线后保持离线，下次启动助手时再按设置登录。</p><div class="ruc-dialog-buttons"><button type="button" class="ruc-button cursor-interaction" data-cancel>取消</button><button type="button" class="ruc-button ruc-primary cursor-interaction" data-confirm>确认断开</button></div></div></div>
+<div class="ruc-dialog-layer" data-account-dialog hidden><form class="ruc-dialog ruc-account-form" role="dialog" aria-modal="true" aria-labelledby="account-title"><h2 id="account-title">添加校园账号</h2><p>密码加密保存在本机</p><label>账号备注（选填）<input name="accountName" maxlength="24" autocomplete="off" placeholder="例如：我的校园账号"></label><label>学工号<input name="username" autocomplete="username" required maxlength="128"></label><label>数智人大密码<input name="password" type="password" autocomplete="new-password" placeholder="请输入数智人大密码" required maxlength="512"></label><p class="ruc-form-error" role="alert" data-account-error></p><div class="ruc-dialog-buttons"><button type="button" class="ruc-text-button" data-forget hidden>删除账号</button><button type="button" class="ruc-button" data-account-cancel>取消</button><button type="submit" class="ruc-button ruc-primary">保存账号</button></div></form></div>
+  <div class="ruc-dialog-layer" data-account-confirm hidden><section class="ruc-dialog" role="dialog" aria-modal="true" aria-labelledby="account-confirm-title"><h2 id="account-confirm-title"></h2><p data-account-confirm-copy></p><p class="ruc-form-error" data-account-confirm-error role="alert"></p><div class="ruc-dialog-buttons"><button type="button" class="ruc-button" data-account-confirm-cancel>取消</button><button type="button" class="ruc-button ruc-primary" data-account-confirm-submit>确认</button></div></section></div>
+  <div class="ruc-dialog-layer" data-onboarding hidden><section class="ruc-dialog" role="dialog" aria-modal="true" aria-labelledby="onboarding-title"><div class="ruc-dialog-mark"><i data-lucide="key-round" aria-hidden="true"></i></div><h2 id="onboarding-title">先设置账号，让助手替你登录</h2><p>需要在助手中保存校园网账号和密码，才能使用自动登录。即使网络已登录，助手也可能尚未保存凭据。</p><ol class="ruc-onboarding-steps"><li>保存校园网账号和密码</li><li>选择开机自启和启动时自动登录</li></ol><p>也可以暂时跳过，查看当前网络状态。</p><p class="ruc-form-error" data-onboarding-error role="alert"></p><div class="ruc-dialog-buttons"><button type="button" class="ruc-text-button" data-onboarding-skip>暂时跳过</button><button type="button" class="ruc-button ruc-primary" data-onboarding-start>设置账号和密码</button></div></section></div>
   <div class="ruc-dialog-layer" data-device-name-dialog hidden><form class="ruc-dialog ruc-device-name-form" role="dialog" aria-modal="true" aria-labelledby="device-name-title"><h2 id="device-name-title">设备命名</h2><p>名称保存在本机，按 MAC 关联设备与历史流量。</p><p class="ruc-device-mac" data-device-name-mac></p><label>设备名称<input name="deviceName" maxlength="40" autocomplete="off" placeholder="例如：我的电脑"></label><p class="ruc-form-error" role="alert" data-device-name-error></p><div class="ruc-dialog-buttons"><button type="button" class="ruc-text-button" data-device-name-reset>恢复默认名称</button><button type="button" class="ruc-button" data-device-name-cancel>取消</button><button type="submit" class="ruc-button ruc-primary">保存名称</button></div></form></div>
   <div class="ruc-toast" role="status" aria-live="polite" hidden></div>
 </div>

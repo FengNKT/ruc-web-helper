@@ -26,6 +26,7 @@ export function setupUpdates(root,call,listen,navigate){
       q('[data-update-info]').textContent=`版本 ${release.version}${Number.isNaN(date.getTime())?'':` · ${date.toLocaleDateString('zh-CN')}`}${release.size?` · ${formatBytes(release.size)}`:''}${release.signed?'':' · 需从发布页面手动下载'}`;
     }
     const downloading=['downloading','verifying'].includes(status);
+    q('[data-update-details]').hidden=!release&&!downloading;
     q('[data-update-progress]').hidden=!downloading;
     q('[data-update-progress-text]').hidden=!downloading;
     q('[data-update-progress]').value=release?.size?Math.min(100,state.downloaded/release.size*100):0;

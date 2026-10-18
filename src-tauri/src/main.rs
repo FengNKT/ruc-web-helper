@@ -1,11 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod branding;
+mod cleanup;
 mod credentials;
 mod device_names;
 mod portal;
 mod protocol;
 mod service;
+mod storage;
 mod update_install;
 mod update_manifest;
 mod update_network;
@@ -16,6 +18,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Manager,
 };
+use tauri_plugin_autostart::ManagerExt;
 
 fn show_main(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
@@ -43,7 +46,9 @@ fn main() {
         }))
         .setup(|app| {
             let executable = std::env::current_exe()?;
-            let directory = executable.parent().ok_or("无法定位程序目录")?.to_path_buf();
+            let old_directory = executable.parent().ok_or("无法定位程序目录")?;
+            let directory = storage::directory()?;
+            storage::prepare(old_directory, &directory)?;
             branding::migrate_startup(&executable)?;
             let mut legacy = app.path().app_data_dir()?.join("settings-v2.json");
             if !legacy.exists() {
@@ -54,7 +59,11 @@ fn main() {
                         .join("settings-v2.json");
                 }
             }
-            app.manage(service::Service::new(directory.clone(), legacy)?);
+            app.manage(service::Service::new(directory.clone(), legacy, || {
+                app.autolaunch()
+                    .enable()
+                    .map_err(|_| "无法启用开机自启，请检查 Windows 启动项权限".to_string())
+            })?);
             app.manage(updater::Updater::new(directory.clone()));
             let theme = app.state::<service::Service>().settings().theme.native();
             tauri::WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?
@@ -98,15 +107,19 @@ fn main() {
                 }
             }
             service::start_worker(app.handle().clone());
-            update_install::acknowledge(&directory);
+            update_install::acknowledge(&directory, &executable);
             updater::start_worker(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             service::get_preferences,
+            service::clear_all_data,
             service::set_preferences,
             service::save_account,
+            service::set_automatic_account,
             service::forget_account,
+            service::switch_account,
+            service::reset_accounts,
             service::get_snapshot,
             service::connect_network,
             service::disconnect_network,
@@ -116,6 +129,7 @@ fn main() {
             service::set_device_name,
             service::set_device_ignored,
             service::open_official,
+            service::open_privacy_feedback,
             updater::get_update_state,
             updater::set_update_preferences,
             updater::check_update,

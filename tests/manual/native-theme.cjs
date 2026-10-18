@@ -5,8 +5,8 @@ const assert=require('node:assert/strict');
 const {chromium}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 (async()=>{
-  const directory=process.env.RUC_DELIVERY_DIR;
-  assert.ok(directory,'RUC_DELIVERY_DIR is required');
+  const directory=process.env.RUC_DATA_DIR;
+  assert.ok(directory,'RUC_DATA_DIR is required');
   const settingsFile=path.join(directory,'settings.json');
   const read=()=>JSON.parse(fs.readFileSync(settingsFile,'utf8'));
   const original=read(),savedTheme=original.theme||'system';

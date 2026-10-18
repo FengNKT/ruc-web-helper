@@ -88,6 +88,17 @@ struct Inner {
 #[derive(Clone)]
 pub struct Updater(Arc<Inner>);
 impl Updater {
+    pub fn begin_data_clear(&self) -> Result<(), String> {
+        self.0
+            .busy
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .map(|_| ())
+            .map_err(|_| "正在检查或下载更新，请完成或取消后再清除数据".into())
+    }
+    pub fn abort_data_clear(&self) {
+        self.0.busy.store(false, Ordering::SeqCst);
+    }
+
     pub fn new(directory: PathBuf) -> Self {
         let stored: Stored = fs::read(directory.join("updater.json"))
             .ok()
@@ -168,7 +179,7 @@ impl Updater {
         let temp = self.0.directory.join("updater.tmp");
         fs::write(&temp, bytes)
             .and_then(|_| fs::rename(&temp, self.0.directory.join("updater.json")))
-            .map_err(|_| "无法保存更新设置，请检查程序目录权限".into())
+            .map_err(|_| "无法保存更新设置，请检查用户数据目录权限".into())
     }
     fn request(
         &self,
@@ -514,7 +525,7 @@ pub fn install_update(
     let result = (|| {
         let executable = std::env::current_exe().map_err(|_| "无法定位程序")?;
         let release = updater.view().release.ok_or("更新信息已失效")?;
-        update_install::prepare(&executable, &release.version)
+        update_install::prepare(&updater.0.directory, &executable, &release.version)
     })();
     match result {
         Ok(()) => {

@@ -7,7 +7,7 @@
 ## 源码与软件分别放在哪里
 
 - GitHub 的 Code 页面保存源码、README、文档、许可证、测试和构建工作流。
-- GitHub 的 Releases 页面保存可运行的软件。学生下载便携 ZIP，解压运行即可。
+- GitHub 的 Releases 页面保存可运行的软件。用户下载单个 EXE 即可运行，配置保存在 Windows 用户目录；便携 ZIP 作为含说明文档的可选附件保留。
 - 每个正式版本有对应 tag，Release 的 Source code 下载项对应该 tag 的源码。
 - EXE、ZIP、个人运行数据、依赖及构建缓存不提交到源码仓库。
 

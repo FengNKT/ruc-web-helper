@@ -26,6 +26,7 @@ pub struct Snapshot {
 }
 
 pub struct Portal {
+    pub password_status: Option<bool>,
     client: Client,
     ip: String,
     acid: String,
@@ -75,13 +76,25 @@ pub fn error_message(value: &Value) -> String {
         "E2617" => "已达到消费保护限额，请在官网处理".into(),
         "E2606" => "账号尚未激活，请在官网处理".into(),
         _ => {
+            // The school's password rejection can be reported by the LDAP
+            // adapter without the word "password", and in any detail field.
+            let password_rejected = ["error_msg", "message", "ploy_msg", "error"]
+                .iter()
+                .filter_map(|key| value[*key].as_str())
+                .any(|detail| {
+                    let detail = detail.to_ascii_lowercase();
+                    detail.contains("ldap_bind error") || detail.contains("ldap_bind_error")
+                });
+            if password_rejected {
+                return "数智人大密码错误，请在设置中修改该账号的密码后重试".into();
+            }
             let detail = ["error_msg", "message", "ploy_msg", "error"]
                 .iter()
                 .filter_map(|key| value[*key].as_str())
                 .find(|s| !s.is_empty())
                 .unwrap_or("请求失败");
             if detail.to_ascii_lowercase().contains("password") || detail.contains("密码") {
-                "账号或密码错误，请重新保存账号".into()
+                "学工号或数智人大密码错误，请在设置中检查后重试".into()
             } else {
                 format!("{}", detail.chars().take(180).collect::<String>())
             }
@@ -143,6 +156,7 @@ impl Portal {
             .build()
             .map_err(|_| "无法初始化 HTTPS 网络客户端")?;
         Ok(Self {
+            password_status: None,
             client,
             ip: String::new(),
             acid: String::new(),
@@ -338,7 +352,23 @@ impl Portal {
         })).collect())
     }
 
+    pub async fn switch_account(&mut self, account: &Account) -> Result<Snapshot, String> {
+        self.password_status = None;
+        let before = self.snapshot().await?;
+        if before.authenticated && before.username == account.username {
+            return Ok(before);
+        }
+        if before.authenticated {
+            self.logout().await?;
+        } else if before.status != "offline" {
+            return Err(before.message);
+        }
+        // login verifies the final identity and refuses to overwrite another session.
+        self.login(account).await
+    }
+
     pub async fn login(&mut self, account: &Account) -> Result<Snapshot, String> {
+        self.password_status = None;
         let before = self.snapshot().await?;
         if !before.username.is_empty() && before.username != account.username {
             return Err("当前网络已由其他账号登录，请先在官网处理后再连接".into());
@@ -371,10 +401,20 @@ impl Portal {
         let response = self
             .api(Method::GET, "/cgi-bin/srun_portal", &params, false)
             .await?;
-        require_success(&response)?;
+        if let Err(error) = require_success(&response) {
+            if error.starts_with("数智人大密码错误")
+                || error.starts_with("学工号或数智人大密码错误")
+            {
+                self.password_status = Some(false);
+            }
+            return Err(error);
+        }
         let snapshot = self.snapshot().await?;
         if snapshot.authenticated && snapshot.username == account.username {
+            self.password_status = Some(true);
             Ok(snapshot)
+        } else if snapshot.authenticated {
+            Err("认证后的在线账号与目标账号不一致，请刷新网络状态后重试".into())
         } else {
             Err(snapshot.message)
         }
@@ -605,9 +645,45 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn school_ldap_password_rejection_has_an_actionable_message() {
+        let expected = "数智人大密码错误，请在设置中修改该账号的密码后重试";
+        for key in ["error_msg", "message", "ploy_msg", "error"] {
+            let mut response = json!({"ecode":"E2901","error":"authentication_failed"});
+            response[key] = json!("E2901: (Third party 1)bind_user2: ldap_bind error");
+            assert_eq!(error_message(&response), expected);
+        }
+        assert_eq!(
+            error_message(&json!({"status":"E2901","message":"LDAP_BIND_ERROR"})),
+            expected
+        );
+        assert_eq!(
+            error_message(&json!({"error":"password_error"})),
+            "学工号或数智人大密码错误，请在设置中检查后重试"
+        );
+        // E2901 alone is not proof of a password rejection.
+        assert_eq!(
+            error_message(
+                &json!({"ecode":"E2901","error_msg":"authentication service unavailable"})
+            ),
+            "authentication service unavailable"
+        );
+        assert_eq!(
+            error_message(&json!({"error":"ldap_server_connect_error"})),
+            "ldap_server_connect_error"
+        );
+    }
+
     // Exercise the actual HTTP login sequence with fictional credentials. The
     // production build has no endpoint override; no school requests occur here.
     fn fixture(responses: Vec<(&'static str, String)>) -> (Portal, std::thread::JoinHandle<()>) {
+        fixture_for_users(responses, "fixture-student", "fixture-student")
+    }
+    fn fixture_for_users(
+        responses: Vec<(&'static str, String)>,
+        login_name: &'static str,
+        logout_name: &'static str,
+    ) -> (Portal, std::thread::JoinHandle<()>) {
         use std::io::{BufRead, BufReader, Write};
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         listener.set_nonblocking(true).unwrap();
@@ -643,7 +719,13 @@ mod tests {
                     let query: std::collections::HashMap<_, _> = url.query_pairs().collect();
                     assert_eq!(
                         query.get("username").map(|s| s.as_ref()),
-                        Some("fixture-student")
+                        Some(
+                            if query.get("action").map(|s| s.as_ref()) == Some("login") {
+                                login_name
+                            } else {
+                                logout_name
+                            }
+                        )
                     );
                     if query.get("action").map(|s| s.as_ref()) == Some("login") {
                         assert!(query
@@ -785,6 +867,106 @@ mod tests {
                 json!({"code":0,"data":[]}).to_string(),
             ),
         ]
+    }
+    fn offline_steps() -> Vec<(&'static str, String)> {
+        vec![
+            ("/index_6.html", String::new()),
+            (
+                "/index_6.html",
+                r#"ip: "10.0.0.2" <meta name="_xsrf" content="fixture-xsrf">"#.into(),
+            ),
+            (
+                "/cgi-bin/rad_user_info",
+                json!({"error":"not_online_error"}).to_string(),
+            ),
+        ]
+    }
+    #[test]
+    fn switching_verifies_logout_and_final_identity_and_never_rolls_back() {
+        for outcome in [
+            "success",
+            "logout-failed",
+            "password-error",
+            "wrong-identity",
+        ] {
+            let mut responses = online_steps(); // Switch preflight: A.
+            responses.extend(online_steps()); // Logout preflight: A.
+            responses.push(("/cgi-bin/srun_portal", json!({"error":"ok"}).to_string()));
+            if outcome == "logout-failed" {
+                responses.extend(online_steps()); // A is still online: do not authenticate B.
+            } else {
+                responses.extend(offline_steps()); // Logout confirmed.
+                responses.extend(offline_steps()); // Login preflight.
+                responses.push((
+                    "/cgi-bin/get_challenge",
+                    json!({"error":"ok","challenge":"fictional-challenge"}).to_string(),
+                ));
+                responses.push((
+                    "/cgi-bin/srun_portal",
+                    if outcome == "password-error" {
+                        json!({"ecode":"E2901","error":"authentication_failed","error_msg":"E2901: (Third party 1)bind_user2: ldap_bind error"})
+                    } else {
+                        json!({"error":"ok"})
+                    }
+                    .to_string(),
+                ));
+                if outcome != "password-error" {
+                    responses.extend(online_steps().into_iter().map(|(path, text)| {
+                        (
+                            path,
+                            if outcome == "success" {
+                                text.replace("fixture-student", "fixture-other")
+                            } else {
+                                text
+                            },
+                        )
+                    }));
+                }
+            }
+            let (mut portal, server) =
+                fixture_for_users(responses, "fixture-other", "fixture-student");
+            let account = Account {
+                username: "fixture-other".into(),
+                password: "fictional-other-password".into(),
+            };
+            let result = runtime().block_on(portal.switch_account(&account));
+            if outcome == "success" {
+                assert_eq!(portal.password_status, Some(true));
+                assert_eq!(result.unwrap().username, "fixture-other");
+            } else {
+                assert!(result.is_err(), "{outcome} must not report success");
+                if outcome == "password-error" {
+                    assert_eq!(portal.password_status, Some(false));
+                    assert_eq!(
+                        result.err().unwrap(),
+                        "数智人大密码错误，请在设置中修改该账号的密码后重试"
+                    );
+                } else {
+                    assert_eq!(portal.password_status, None);
+                }
+            }
+            server.join().unwrap();
+        }
+    }
+    #[test]
+    fn switching_to_the_online_identity_does_not_disconnect() {
+        let (mut portal, server) = fixture(online_steps());
+        portal.password_status = Some(false);
+        let account = Account {
+            username: "fixture-student".into(),
+            password: "fictional-password".into(),
+        };
+        assert!(
+            runtime()
+                .block_on(portal.switch_account(&account))
+                .unwrap()
+                .authenticated
+        );
+        assert_eq!(
+            portal.password_status, None,
+            "Observing an online session does not verify the saved password"
+        );
+        server.join().unwrap();
     }
     #[test]
     fn logout_confirms_offline_even_with_a_non_json_operation_response() {

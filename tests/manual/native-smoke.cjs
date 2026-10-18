@@ -63,20 +63,22 @@ let browser;
     await page.screenshot({path:artifact('traffic-statistics-desktop.png','manual'),fullPage:true});
   }
   await page.locator('[data-page="settings"]').click();
-  const credentialsAvailable=await page.evaluate(async()=>(await window.__TAURI_INTERNALS__.invoke('get_preferences')).hasCredentials);
-  assert.equal(await page.locator('[data-setting="auto"]').isDisabled(),!credentialsAvailable);
+  const accountPreferences=await page.evaluate(async()=>await window.__TAURI_INTERNALS__.invoke('get_preferences'));
+  const credentialsAvailable=accountPreferences.hasCredentials;
+  assert.equal(await page.locator('[data-setting="auto"]').isDisabled(),false);
   assert.equal(await page.locator('[data-app-version]').textContent(),await page.evaluate(()=>window.__TAURI_INTERNALS__.invoke('plugin:app|version')));
-  await page.locator('[data-account]').click();
+  if(credentialsAvailable)await page.locator(`[data-edit-account="${accountPreferences.selectedId}"]`).click();
+  else await page.locator('[data-account]').click();
   assert.equal(await page.locator('input[name="password"]').inputValue(),'');
-  if(credentialsAvailable)assert.equal(await page.locator('input[name="password"]').getAttribute('placeholder'),'已配置密码（留空保留）');
+  if(credentialsAvailable)assert.equal(await page.locator('input[name="password"]').getAttribute('placeholder'),'••••••');
   await page.locator('[data-account-cancel]').click();
   await page.locator('[data-page="overview"]').click();
   await page.screenshot({path:artifact('real-api-desktop.png','manual'),fullPage:true});
   const fs=require('node:fs'),path=require('node:path');
-  const directory=process.env.RUC_DELIVERY_DIR;
+  const directory=process.env.RUC_DATA_DIR||path.join(process.env.LOCALAPPDATA,'cn.ruc.webhelper');
   if(directory){
     const settings=JSON.parse(fs.readFileSync(path.join(directory,'settings.json'),'utf8'));
-    assert.deepEqual(Object.keys(settings).sort(),['auto','notice','startup','theme','wake']);
+    assert.deepEqual(Object.keys(settings).sort(),['auto','notice','onboarding_done','startup','theme']);
     assert.ok(fs.statSync(path.join(directory,'webview-data')).isDirectory());
     const account=path.join(directory,'account.enc');
     if(fs.existsSync(account))assert.ok(fs.readFileSync(account).subarray(0,10).equals(Buffer.from('RUC-DPAPI'+String.fromCharCode(1))));

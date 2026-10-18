@@ -28,7 +28,7 @@ const path=require('node:path');
     await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
     await page.addInitScript(({version})=>{
       window.isTauri=true;
-      const preferences={settings:{startup:true,auto:true,wake:true,notice:true,theme:'light'},username:'demo2026',hasCredentials:true,paused:false,automaticError:''};
+      const preferences={settings:{startup:true,auto:true,notice:true,theme:'light',onboarding_done:true},username:'demo2026',hasCredentials:true,selectedId:'demo-main',automaticId:'demo-main',accounts:[{id:'demo-main',name:'我的校园账号',username:'demo2026',passwordError:false},{id:'demo-other',name:'备用账号',username:'demo-other',passwordError:false}],credentialError:'',automaticError:''};
       const devices=[
         {id:1,name:'我的电脑',customName:'我的电脑',os:'Windows',mac:'02:00:00:00:00:01',ip:'192.0.2.10',online:true,current:true},
         {id:2,name:'手机',customName:'手机',os:'Android',mac:'02:00:00:00:00:02',ip:'192.0.2.11',online:true,current:false},
@@ -66,7 +66,9 @@ const path=require('node:path');
     await capture('overview');
     await page.locator('[data-page="settings"]').click();
     await capture('settings');
+    await page.locator('.ruc-accounts').screenshot({path:path.join(output,'accounts.png')});
     await page.locator('[data-update-card]').scrollIntoViewIfNeeded();
+    await page.locator('[data-update-network]').scrollIntoViewIfNeeded();
     await capture('updates');
     await page.setViewportSize({width:1040,height:1450});
     await page.locator('[data-page="records"]').click();
@@ -77,7 +79,7 @@ const path=require('node:path');
     await page.selectOption('[data-traffic-day]','7');
     await capture('daily-statistics');
     if(errors.length)throw Error(errors.join('\n'));
-    process.stdout.write('Saved 5 documentation screenshots with fictional data.\n');
+    process.stdout.write('Saved 6 documentation screenshots with fictional data.\n');
   }finally{
     if(browser)await browser.close();
     await new Promise(resolve=>server.close(resolve));
